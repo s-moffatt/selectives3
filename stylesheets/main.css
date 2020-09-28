@@ -273,7 +273,7 @@ textarea {
   border-right: 1px solid #555;*/
   border-collapse: collapse;
 }
-#attend-view-class-table th, td {
+#attend-view-class-table th, #attend-view-class-table td {
   padding: 2px 8px 0;
   border: 1px solid #ccc;
   border-collapse: collapse;
