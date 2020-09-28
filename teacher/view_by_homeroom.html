@@ -143,7 +143,7 @@ function fillHomeroomDropDown() {
   opt.text = "All";
   opt.selected = "selected";
   homeroom_dd.add(opt);
-  
+
   {% for homeroom in homeroom_nums %}
     opt = document.createElement("option");
     opt.text = "{{homeroom}}";
