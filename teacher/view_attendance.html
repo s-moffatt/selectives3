@@ -9,7 +9,7 @@ function displayAttendance() {
   let class_div, class_header;
   let name, instructor, daypart, location, enrolled;
   let sname, sgrade, shomeroom, td;
-  let table, tbody, row, header, none_div;
+  let table, thead, tbody, row, header, none_div;
 
   {% for c in classes %}
     class_div = document.createElement("div");

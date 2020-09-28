@@ -49,6 +49,8 @@ class ViewAttendance(webapp2.RequestHandler):
     if not session:
       logging.fatal("no session")
     selected_daypart = self.request.get('selected_daypart')
+    if not selected_daypart:
+      selected_daypart = 'All'
     session_query = urllib.urlencode({'institution': institution,
                                       'session': session})
 
