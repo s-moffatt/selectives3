@@ -84,7 +84,7 @@ class ViewByHomeroom(webapp2.RequestHandler):
       classes_to_display.sort(key=alphaOrder)
       return classes_to_display
       
-    classes_by_homeroom = {} # classes by homeroom
+    classes_by_homeroom = {}
     if selected_homeroom == 'All':
       for room in homeroom_nums:
         classes_by_homeroom[room] = getClassesByHomeroom(room)
