@@ -255,10 +255,16 @@ textarea {
   height: 26px;
 }
 .attend-view-by {
-  margin: 0px 0px 10px 0px;
+  margin: 10px 0px 15px 0px;
+  display: flex;
+  font-size: 18px;
+}
+.attend-view-by > label {
+  margin-right: 5px;
+  margin-left: 15px;
 }
 #attend-view-class {
-  margin: 0px 0px 50px 0px;
+  margin: 0px 0px 60px 0px;
   border: 1px solid #555;
   border-radius: 5px;
 }
@@ -267,6 +273,7 @@ textarea {
   background-color: #d1dfe3;
   padding: 6px 0px 4px 7px;
   border-radius: 5px 5px 0px 0px;
+  font-weight: bold;
 }
 #attend-view-class-table {
   /*border-left: 1px solid #555;
@@ -280,6 +287,14 @@ textarea {
 }
 #attend-view-class-table tbody tr:nth-child(odd) {
   background-color: #f1f1f1;;
+}
+.attend-homeroom {
+  font-size: 28px;
+  width = 400px;
+  border: 1px solid #ccc;
+  text-align: center;
+  background-color: burlywood;
+  margin-top: 10px;
 }
 /***** student viewable pages *****/
 /* header, menu, common sections **/
