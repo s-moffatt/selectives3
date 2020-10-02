@@ -37,7 +37,8 @@ import error_registration
 import teachers
 import teacher.courses
 import teacher.take_attendance
-import teacher.attendance_today
+import teacher.view_attendance
+import teacher.view_by_homeroom
 import class_waitlist
 import hover_text
 import materials
@@ -87,7 +88,8 @@ application = webapp2.WSGIApplication([
   ('/teachers', teachers.Teachers),
   ('/teacher/courses', teacher.courses.Courses),
   ('/teacher/take_attendance', teacher.take_attendance.TakeAttendance),
-  ('/teacher/attendance_today', teacher.attendance_today.AttendanceToday),
+  ('/teacher/view_attendance', teacher.view_attendance.ViewAttendance),
+  ('/teacher/view_by_homeroom', teacher.view_by_homeroom.ViewByHomeroom),
   ('/class_waitlist', class_waitlist.ClassWaitlist),
   ('/hover_text', hover_text.HoverText),
   ('/materials', materials.Materials),

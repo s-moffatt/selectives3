@@ -111,14 +111,18 @@ class TakeAttendance(webapp2.RequestHandler):
     note = self.request.get("note")
     teachers = models.Teachers.FetchJson(institution, session)
     teacher = logic.FindUser(auth.email, teachers)
-    attendanceObj = {
+
+    attendance = models.Attendance.FetchJson(institution, session, c_id)
+    # Clobber existing data, or if none, create a new element
+    attendance[submitted_date] = {
       "present": present_kids,
       "absent": absent_kids,
       "submitted_by": " ".join([teacher['first'], teacher['last']]),
       "submitted_date": submitted_date,
       "note": note,
     }
-    models.Attendance.store(institution, session, c_id, submitted_date, attendanceObj)
+    models.Attendance.store(institution, session, c_id, attendance)
+
     self.RedirectToSelf(institution, session, c_id, submitted_date)
 
   def get(self):
@@ -134,9 +138,7 @@ class TakeAttendance(webapp2.RequestHandler):
     if not session:
       logging.fatal("no session")
     selected_cid = self.request.get('selected_cid')
-    logging.info("selected_cid: " + selected_cid)
     selected_date = self.request.get('selected_date')
-    logging.info("selected_date: " + selected_date)
     session_query = urllib.urlencode({'institution': institution,
                                       'session': session,
                                       'current_cid': selected_cid})
@@ -157,19 +159,22 @@ class TakeAttendance(webapp2.RequestHandler):
     for s in students:
       s['email'] = s['email'].lower()
       students_dict[s['email']] = s
-    #logging.info(students_dict)
 
     my_roster = {}
     if selected_cid != 0 and selected_date:
       selected_attendance = models.Attendance.FetchJson(institution, session,
-                                                        selected_cid, selected_date)
+                                                        selected_cid)
       selected_class = next(c for c in classes if c['id'] == int(selected_cid))
       selected_roster = models.ClassRoster.FetchEntity(institution, session, selected_cid)
       if not selected_roster:
         selected_roster = {}
-      my_roster = buildRoster(selected_class, selected_roster, selected_attendance,
+      if selected_date in selected_attendance:
+        attendance = selected_attendance[selected_date]
+      else:
+        attendance = None
+      my_roster = buildRoster(selected_class, selected_roster,
+                              attendance,
                               students_dict)
-      logging.info(my_roster)
     # my_classes and other_classes are lists of classes
     # my_roster is a dictionary:
     # {'name': 'Circuit Training',
