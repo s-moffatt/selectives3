@@ -38,9 +38,16 @@ def augmentClass(institution, session, c, students):
 class ViewAttendance(webapp2.RequestHandler):
   def get(self):
     auth = authorizer.Authorizer(self)
-    if not auth.HasTeacherAccess():
+    if not (auth.CanAdministerInstitutionFromUrl() or
+            auth.HasTeacherAccess()):
       auth.Redirect()
       return
+
+    user_type = 'None'
+    if auth.CanAdministerInstitutionFromUrl():
+      user_type = 'Admin'
+    elif auth.HasTeacherAccess():
+      user_type = 'Teacher'
 
     institution = self.request.get("institution")
     if not institution:
@@ -78,11 +85,11 @@ class ViewAttendance(webapp2.RequestHandler):
     classes_to_display.sort(key=alphaOrder)
 
     template_values = {
+      'user_type' : user_type,
       'user_email' : auth.email,
       'institution' : institution,
       'session' : session,
       'session_query': session_query,
-      'teacher': auth.teacher_entity,
       'dayparts' : dayparts,
       'selected_daypart': selected_daypart,
       'classes': classes_to_display,
