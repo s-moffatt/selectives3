@@ -1,4 +1,8 @@
-{% extends 'menu_teacher.html' %}
+{% if user_type == 'Admin' %}
+  {% extends 'menu.html' %}
+{% elif user_type == 'Teacher' %}
+  {% extends 'menu_teacher.html' %}
+{% endif %}
 {% block session_body %}
 
 <script>
@@ -194,9 +198,6 @@ window.onload = function() {
 }
 </script>
 
-{% if not teacher %}
-Teacher not found! This error should never happen. Please inform the selectives team. Thanks!
-{% else %}
 <h3 id="myHeader" style="margin-top:4px; margin-bottom:4px">View Attendance By Homeroom</h3>
 <div>
   <div id="instructions" style="margin-top:5px; margin-bottom:7px">Newer data may be available. Refresh the page to see the most up-to-date attendance as this page does not refresh automatically.
@@ -209,5 +210,4 @@ Teacher not found! This error should never happen. Please inform the selectives 
   </div>
   <div id="absences"></div>
 </div>
-{% endif %}
 {% endblock %}

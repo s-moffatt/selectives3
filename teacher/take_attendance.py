@@ -64,7 +64,7 @@ def buildClasses(auth, dayparts, classes, my_classes, other_classes):
     hasOwner = False
     if 'owners' in c:
       for owner in c['owners']:
-        if owner == auth.teacher_entity['email']:
+        if hasattr(auth, 'teacher_entity') and owner == auth.teacher_entity['email']:
           hasOwner = True
           my_classes.append(c)
     if not hasOwner:
@@ -82,9 +82,16 @@ class TakeAttendance(webapp2.RequestHandler):
 
   def post(self):
     auth = authorizer.Authorizer(self)
-    if not auth.HasTeacherAccess():
+    if not (auth.CanAdministerInstitutionFromUrl() or
+            auth.HasTeacherAccess()):
       auth.Redirect()
       return
+
+    user_type = 'None'
+    if auth.CanAdministerInstitutionFromUrl():
+      user_type = 'Admin'
+    elif auth.HasTeacherAccess():
+      user_type = 'Teacher'
 
     institution = self.request.get("institution")
     if not institution:
@@ -111,6 +118,10 @@ class TakeAttendance(webapp2.RequestHandler):
     note = self.request.get("note")
     teachers = models.Teachers.FetchJson(institution, session)
     teacher = logic.FindUser(auth.email, teachers)
+    if teacher is None:
+      teacher = {}
+      teacher['first'] = ""
+      teacher['last'] = auth.email
 
     attendance = models.Attendance.FetchJson(institution, session, c_id)
     # Clobber existing data, or if none, create a new element
@@ -127,9 +138,16 @@ class TakeAttendance(webapp2.RequestHandler):
 
   def get(self):
     auth = authorizer.Authorizer(self)
-    if not auth.HasTeacherAccess():
+    if not (auth.CanAdministerInstitutionFromUrl() or
+            auth.HasTeacherAccess()):
       auth.Redirect()
       return
+
+    user_type = 'None'
+    if auth.CanAdministerInstitutionFromUrl():
+      user_type = 'Admin'
+    elif auth.HasTeacherAccess():
+      user_type = 'Teacher'
 
     institution = self.request.get("institution")
     if not institution:
@@ -183,13 +201,13 @@ class TakeAttendance(webapp2.RequestHandler):
     #  'emails': [list of student emails],
     #  'students': [list of student objects based on the emails]}
     template_values = {
+      'user_type' : user_type,
       'user_email' : auth.email,
       'institution' : institution,
       'session' : session,
       'current_cid': selected_cid,
       'current_date': selected_date,
       'session_query': session_query,
-      'teacher': auth.teacher_entity,
       'my_classes': my_classes,
       'my_roster': json.dumps(my_roster),
       'other_classes': other_classes,

@@ -1,4 +1,8 @@
-{% extends 'menu_teacher.html' %}
+{% if user_type == 'Admin' %}
+  {% extends 'menu.html' %}
+{% elif user_type == 'Teacher' %}
+  {% extends 'menu_teacher.html' %}
+{% endif %}
 {% block session_body %}
 
 <script>
@@ -360,9 +364,6 @@ window.onload = function() {
 }
 </script>
 
-{% if not teacher %}
-Teacher not found! This error should never happen. Please inform the selectives team. Thanks!
-{% else %}
 <h3 style="margin-bottom:4px; margin-top:4px">Attendance</h3>
 <p id="instructions">Classes that you teach or assist in are listed first; other classes are listed below the dashed line.<br>
 If you would like to be added as an instructor or assistant to a class, please email selectives@discoveryk8.org.
@@ -390,5 +391,4 @@ If you would like to be added as an instructor or assistant to a class, please e
   <div id="attend-buttons"><input type="button" id="attend-edit" value="Edit">
   <input type="button" id="attend-submit" value="Submit"></div>
 </div>
-{% endif %}
 {% endblock %}
