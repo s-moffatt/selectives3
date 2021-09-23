@@ -87,7 +87,7 @@ class StudentSchedules(webapp2.RequestHandler):
             if dp['location'] == 'Homeroom':
               s[dp['daypart']] = 'Core'
             else:
-              s[dp['daypart']] = dp['location'] + ', ' + cId_class['name']
+              s[dp['daypart']] = str(dp['location']) + ', ' + cId_class['name']
             s[dp['daypart']] = s[dp['daypart']][0:26]
     if students:
       students.sort(key=lambda(s): s['last'])
