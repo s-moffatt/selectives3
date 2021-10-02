@@ -106,6 +106,7 @@ class ErrorRegistration(webapp2.RequestHandler):
         classes_by_id[c['id']] = c
 
       students = models.Students.FetchJson(institution, session)
+      students.sort(key=lambda(s): s['current_homeroom'])
       for s in students:
         if (grade_level != ALL_GRADES) and (s['current_grade'] != grade_level):
           continue
