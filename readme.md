@@ -25,7 +25,13 @@ And instructions to [host your own App Engine test site](https://developer.mozil
 1. Test on your local machine.
 2. Deploy to your test site and verify everything works in the live site.
 3. Deploy to the production site and verify again.
-
+```
+> gcloud app deploy --project [your-project]
+```
+To see the projects and which one is active
+```
+> gcloud config configurations list
+```
 ## Contacts:
 * arthurweinberger@gmail.com
 * sarah.y.moffatt@gmail.com
