@@ -1,9 +1,11 @@
 # Selectives Web
 
+This is the selectives Python 3 migration.
+
 Selectives web is a Google App Engine program to help schools schedule selectives and assign schedules to students.
 
 ## Set up development environment
-Here are instructions to set up the [Python 2 version of App Engine](https://cloud.google.com/appengine/docs/standard/python/setting-up-environment).
+TODO: Here are instructions to set up the Python 3 version of App Engine with Flask
 
 And instructions to [host your own App Engine test site](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/How_do_you_host_your_website_on_Google_App_Engine).
 
@@ -33,5 +35,4 @@ To see the projects and which one is active
 > gcloud config configurations list
 ```
 ## Contacts:
-* arthurweinberger@gmail.com
 * sarah.y.moffatt@gmail.com
