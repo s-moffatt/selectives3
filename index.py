@@ -1,83 +1,54 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
+from flask import render_template, request, redirect, current_app, g as app_ctx
+from flask.views import MethodView
+import urllib.parse
+
 import models
 import authorizer
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
 
+class Index(MethodView):
+  def institutionUrl(self, institution_name):
+    args = urllib.parse.urlencode({'institution': institution_name})
+    return '/institution?%s' % args
 
-class Index(webapp2.RequestHandler):
-  
+  def RedirectToSelf(self, message):
+    return redirect("/?%s" % urllib.parse.urlencode(
+      {'message': message}))
+
   def post(self):
-    auth = authorizer.Authorizer(self)
+    current_app.logger.info("%s", request.form)
+    auth = authorizer.Authorizer()
     if not auth.IsGlobalAdmin():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    action = self.request.get("action");
+    action = request.form.get("action")
     if action == "add_admin":
-      email = self.request.get("administrator")
+      email = request.form.get("administrator")
       models.GlobalAdmin.Store(email)
-      self.redirect("/?%s" % urllib.urlencode(
-          {'message': 'added user: ' + email}))
-      return
+      return self.RedirectToSelf('added user: ' + email)
 
     if action == "delete_admin":
       msgs = []
-      administrators = self.request.get("administrator", allow_multiple=True)
+      administrators = request.form.getlist("administrator")
       for email in administrators:
         msgs.append(email)
         models.GlobalAdmin.Delete(email)
-      self.redirect("/?%s" % urllib.urlencode(
-          {'message': 'delete users: ' + ','.join(msgs)}))
-      return
+      return self.RedirectToSelf('delete users: ' + ','.join(msgs))
 
     if action == "add_institution":
-      name = self.request.get("institution")
-      models.Institution.store(name)
-      self.redirect("/?%s" % urllib.urlencode(
-          {'message': 'added institution: ' + name}))
-      return
-
-    self.redirect("/?%s" % urllib.urlencode(
-          {'message': 'unrecognized command: %s' % action}))
-    return
-
-  def institutionUrl(self, institution_name):
-    args = urllib.urlencode({'institution': institution_name})
-    return '/institution?%s' % args
+      name = request.form.get("institution")
+      models.Institution.Store(name)
+      return self.RedirectToSelf('added institution: ' + name)
 
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.IsGlobalAdmin():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    administrators = models.GlobalAdmin.FetchAll()
-
-    institutions = models.Institution.FetchAllInstitutions()
-    institutions_and_urls = []
-    for institution in institutions:
-      institutions_and_urls.append(
-          {'name': institution.name,
-           'url': self.institutionUrl(institution.name)})
-
-    recent_access = models.RecentAccess.FetchRecentAccess()
-
-    message = self.request.get('message')
-
-    template_values = {
-      'user_email' : auth.email,
-      'institutions' : institutions_and_urls,
-      'administrators' : administrators,
-      'message': message,
-      'recent_access': recent_access,
-    }
-    template = JINJA_ENVIRONMENT.get_template('index.html')
-    self.response.write(template.render(template_values))
+    return render_template('index.html', 
+      uid=auth.uid,
+      institutions=[{'name':i,'url':self.institutionUrl(i)} for i in models.Institution.FetchAll()],
+      administrators=models.GlobalAdmin.FetchAll(),
+      message=request.args.get("message"),
+      recent_access=models.RecentAccess.Fetch(order=['-date_time'],limit=20)
+    )
