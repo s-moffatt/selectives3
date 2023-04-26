@@ -17,6 +17,46 @@ body {
   background-color: #d6979d;
 }
 
+/***** base.html *****/
+.message {
+  padding: 20px;
+  background-color: #2196F3;
+  color: white;
+  
+  animation:message 0.5s 1;
+  -webkit-animation:message 0.5s 1;
+  animation-fill-mode: forwards;
+
+  animation-delay:3s;
+  -webkit-animation-delay:2s; /* Safari and Chrome */
+  -webkit-animation-fill-mode: forwards;
+}
+
+.message_closebtn {
+  margin-left: 15px;
+  color: white;
+  font-weight: bold;
+  float: right;
+  font-size: 22px;
+  line-height: 20px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.message_closebtn:hover {
+  color: black;
+}
+
+@keyframes message{
+    from {opacity :1;}
+    to {opacity :0;}
+}
+
+@-webkit-keyframes message{
+    from {opacity :1;}
+    to {opacity :0;}
+}
+
 /***** admin viewable pages *****/
 /* menu-main and menu-teacher (below) should match */
 #menu-main h3 {

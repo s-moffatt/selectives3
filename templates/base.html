@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+{% autoescape true %}
+<html lang="en">
+  <head>
+    <title>Discovery Selectives</title>
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='/stylesheets/main.css') }}" />
+    <link href='https://fonts.googleapis.com/css?family=Oxygen' rel='stylesheet' type='text/css'>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">     
+    {% include '_script_head.html' %}
+  </head>
+  <body style="display: none">
+    <table width=100%><tr>
+      <td align=left><h1>
+        {# TODO fix this hack:
+           We need an institution url not a session_query #}
+        {% if session_query %}
+          <a href="/institution?{{ session_query }}">{{ institution }} {{ session }} Selectives</a>
+        {% else %}
+          <a href="/">{{ institution }} {{ session if session }} Selectives</a>
+        {% endif %}
+      </h1></td>
+      {% if message and (message != '') %}
+      <td class="message" id="message">
+        <span class="message_closebtn" onclick="this.parentElement.style.display='none';">&times;</span> 
+        <strong>{{ message }}</strong>
+      </td>
+      {% endif %}
+      <!--This message will only display on certain admin pages that pass setup_status.-->
+      {% if setup_status and (setup_status == 'DB_UPDATE_NEEDED') %}
+      <td style="color:red">
+        Database upgrade required! Go to Validate Setup to run upgrade script.
+      </td>
+      {% endif %}
+      {% if setup_status and (setup_status == 'FAIL') %}
+      <td style="color:blue">
+        Setup validation failed! See Validate Setup page for details.
+      </td>
+      {% endif %}
+      {% if setup_status and (setup_status == 'UNKNOWN') %}
+      <td style="color:blue">
+        Setup status unknown. Running Validate Setup is advised.
+      </td>
+      {% endif %}
+      <td align=right>
+      {% include '_user.html' %}
+      </td>
+    </tr></table>
+    <hr>
+    <div id="block_body">
+      <div id="block_body_inner" redirect="{{ redirect }}" uid="{{ uid }}">
+        {% block body %} {% endblock %}
+      </div>
+    </div>
+    {% include '_script_body.html' %}
+  </body>
+</html>
+{% endautoescape %}
