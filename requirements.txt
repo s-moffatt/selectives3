@@ -1,0 +1,6 @@
+flask
+flask_login
+google-cloud-datastore
+google-cloud-resource-manager
+google-auth
+firebase-admin

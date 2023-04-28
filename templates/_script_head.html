@@ -1,0 +1,79 @@
+    <script type="module">
+      // import Firebase module attributes
+      import {
+              initializeApp
+      } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-app.js";
+      import {
+              GoogleAuthProvider,
+              getAuth,
+              onAuthStateChanged,
+              signInWithPopup,
+              signOut
+      } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-auth.js";
+      
+{% include '_firebase_config.js' %}
+
+      // initialize Firebase app & auth components
+      initializeApp(firebaseConfig);
+      var auth = getAuth();
+      var provider = new GoogleAuthProvider();
+      //provider.setCustomParameters({prompt: 'select_account'});
+      
+      // define login and logout button functions
+      function login() {
+          signInWithPopup(auth, provider);
+      };
+      
+      function logout() {
+          signOut(auth);
+      };
+      
+      // check if admin & switch to logout button on login; reset everything on logout
+      onAuthStateChanged(auth, async (user) => {
+          if (user && user != null) {
+            var email = user.email;
+            who.innerHTML = email;
+            logbtn.onclick = logout;
+            logbtn.innerHTML = "Sign out";
+            var uid = await user.uid;
+            if (!document.getElementById("block_body").firstElementChild || uid != document.getElementById("block_body").firstElementChild.getAttribute('uid')) {
+              var idToken = await user.getIdToken();
+              // get authenticated contents
+              var rsp = await fetch(window.location.href, {
+                      method: "GET",
+                      headers: {Authorization: idToken}
+              })
+              var redirect = await rsp.headers.get('selectives-redirect');
+              //console.log("authenticated: redirect="+redirect);
+              if(redirect) {
+                window.location.href=redirect
+              } else {
+                var html = await rsp.text();
+                var doc = new DOMParser().parseFromString(html,'text/html');
+                document.getElementById("block_body").innerHTML=doc.getElementById('block_body').innerHTML;
+              }
+            }
+            document.body.style.display="block"
+          } else { 
+            var redirect;
+            if (document.getElementById("block_body").firstElementChild.getAttribute('uid')!="False") {
+              var rsp = await fetch('/sessionSignout', {
+                      method: "POST"
+              })
+              redirect = await rsp.headers.get('selectives-redirect');
+            } else {
+              redirect = document.getElementById("block_body").firstElementChild.getAttribute('redirect');
+            }
+            //console.log("NOT authenticated: redirect="+redirect);
+            if(redirect) {
+              window.location.href=redirect
+            } else {
+              who.innerHTML = "";
+              admin.style.display = "none";
+              logbtn.onclick = login;
+              logbtn.innerHTML = "Sign in";
+              document.getElementById("block_body").innerHTML="";
+            }
+          }
+      });
+    </script>

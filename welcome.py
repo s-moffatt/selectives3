@@ -1,33 +1,20 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
+from flask import render_template, url_for, redirect
+from flask.views import MethodView
+
 import models
 import authorizer
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
-
-
-class Welcome(webapp2.RequestHandler):
+class Welcome(MethodView):
+  def post(self):
+    return self.get()
 
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if auth.HasStudentAccess():
-        auth.Redirect()
-        return
+        return auth.Redirect()
     if auth.HasTeacherAccess():
-        auth.Redirect()
-        return
-    login_url = auth.GetLoginUrl()
-    welcome_msg = models.Welcome.Fetch()
-    template_values = {
-      'login_url': login_url,
-      'user_email' : auth.email,
-      'welcome_msg' : welcome_msg,
-    }
-    template = JINJA_ENVIRONMENT.get_template('welcome.html')
-    self.response.write(template.render(template_values))
+        return auth.Redirect()
+    return render_template('welcome.html', 
+      uid=auth.uid,
+      welcome_msg= models.Welcome.Fetch()
+    )
