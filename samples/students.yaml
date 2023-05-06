@@ -1,0 +1,17 @@
+# Sample data. Lines with leading # signs are comments.
+# Change the data below.
+- email: student1@mydiscoveryk8.org
+  first: Stu
+  last: Dent1
+  current_grade: 8
+  current_homeroom: 29
+- email: student2@mydiscoveryk8.org
+  first: Stu
+  last: Dent2
+  current_grade: 7
+  current_homeroom: 19
+- email: student3@mydiscoveryk8.org
+  first: Stu
+  last: Dent3
+  current_grade: 6
+  current_homeroom: 23

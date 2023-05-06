@@ -56,7 +56,7 @@
             document.body.style.display="block"
           } else { 
             var redirect;
-            if (document.getElementById("block_body").firstElementChild.getAttribute('uid')!="False") {
+            if (document.getElementById("block_body").firstElementChild.getAttribute('uid')!="None") {
               var rsp = await fetch('/sessionSignout', {
                       method: "POST"
               })

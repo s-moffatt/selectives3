@@ -1,0 +1,43 @@
+# Sample data. Lines with leading # signs are comments.
+# Change the data below.
+- name: PE_1_day_equivalent
+  classes:
+    - name: Basketball
+      id: 11
+    - name: Basketball
+      id: 19
+    - name: Boxing
+      id: 33
+    - name: Circuit Training (Beg)
+      id: 12
+    - name: Circuit Training (Beg)
+      id: 43
+    - name: Circuit Training (Adv)
+      id: 32
+    - name: Fitness & Fun
+      id: 18
+    - name: Walking Club
+      id: 50
+- name: PE_2_day_equivalent
+  classes:
+    - name: Dance
+      id: 37
+- name: PE_Mon_or_Tue
+  classes:
+    - id: 52
+    - id: 53
+    - id: 54
+    - id: 55
+    - id: 56
+    - id: 57
+    - id: 58
+- name: PE_Thu_or_Fri
+  classes:
+    - id: 59
+    - id: 60
+    - id: 61
+    - id: 62
+    - id: 63
+    - id: 64
+    - id: 65
+    - id: 66

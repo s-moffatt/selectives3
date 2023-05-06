@@ -16,7 +16,7 @@ class TestBase(object):
       if v.startswith("test"):
         num_tests = num_tests + 1
         self.status = self.PASS
-        print "\nStarting Test:", v
+        print("\nStarting Test:", v)
         try:
           self.__getattribute__(v)()
           status[v] = self.status
@@ -25,15 +25,15 @@ class TestBase(object):
         except:
           traceback.print_exc()
           status[v] = self.EXCEPTION
-    print "\nResults:"
+    print("\nResults:")
     for t in status:
-      print "%13s %s" % (status[t], t)
-    print
-    print "%d of %d tests passed" % (num_pass, num_tests)
-    print
+      print("%13s %s" % (status[t], t))
+    print("")
+    print("%d of %d tests passed" % (num_pass, num_tests))
+    print("")
 
   def Fail(self, msg):
-    print msg
+    print(msg)
     traceback.print_stack()
     self.status = self.FAIL
 

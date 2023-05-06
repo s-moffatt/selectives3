@@ -1,0 +1,16 @@
+# Sample data. Lines with leading # signs are comments.
+# Change the data below.
+- class: 6th Core
+  class_id: 65
+  applies_to:
+    - current_grade: 6
+  exempt:
+    - student3@mydiscoveryk8.org
+- class: 7th Core
+  class_id: 63
+  applies_to:
+    - current_grade: 7
+- class: 8th Core
+  class_id: 64
+  applies_to:
+    - current_grade: 8

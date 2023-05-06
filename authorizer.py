@@ -1,15 +1,5 @@
-#import Cookie
-#import os
-#import logging
-#try:
-#  from google.appengine.api import users
-#except:
-#  current_app.logger.info("google.appengine.api.users not found. "
-#                "We must be running in a unit test.")
-#import logic
+import logic
 import models
-#import urllib
-#import yaml
 
 from flask import request, render_template, make_response, current_app, g as app_ctx
 import datetime
@@ -19,7 +9,6 @@ import urllib.parse
 from google.auth import default
 from google.cloud import resourcemanager
 from firebase_admin import auth, exceptions
-
 
 def _get_gae_admins():
   'return set of App Engine admins'
@@ -48,9 +37,13 @@ class Authorizer(object):
 
   def __init__(self):
     current_app.logger.info("Authorizer.__init__")
-    self.email = False
-    self.token = False
-    self.uid   = False
+    self.email = None
+    self.token = None
+    self.uid   = None
+    self.student_email = None
+    self.teacher_email = None
+    self.student_entity = None
+    self.teacher_entity = None
 
     self.authenticate()
 	
@@ -147,102 +140,110 @@ class Authorizer(object):
     if not self.email:
       current_app.logger.error("No user")
       return False
-    institution = request.args.get("institution")
+    institution = request.args.get("institution") or request.form.get("institution")
     if not institution:
       current_app.logger.error("No institution")
       return False
-    session = request.args.get("session")
+    session = request.args.get("session") or request.form.get("session")
     if not session:
       current_app.logger.error("No session")
       return False
-    #if self.CanAdministerInstitutionFromUrl():
-    #  return self._VerifyStudent(institution,
-    #                             session,
-    #                             self.handler.request.get("student").lower())
-    #if not self._VerifyServingSession(institution, session):
-    #  return False
-    #return self._VerifyStudent(institution,
-    #                           session,
-    #                           self.email)
+    if self.CanAdministerInstitutionFromUrl():
+      return self._VerifyStudent(institution,
+                                 session,
+                                 request.args.get("student","").lower() or request.form.get("student","").lower())
+    if not self._VerifyServingSession(institution, session):
+      return False
+    return self._VerifyStudent(institution,
+                               session,
+                               self.email)
 
   def HasTeacherAccess(self):
     if not self.email:
       current_app.logger.error("No user")
       return False
-    institution = request.args.get("institution")
+    institution = request.args.get("institution") or request.form.get("institution")
     if not institution:
       current_app.logger.error("No institution")
       return False
-    session = request.args.get("session")
+    session = request.args.get("session") or request.form.get("session")
     if not session:
       current_app.logger.error("No session")
       return False
-#    if self.CanAdministerInstitutionFromUrl():
-#      return self._VerifyTeacher(institution,
-#                                 session,
-#                                 self.handler.request.get("teacher").lower())
-#    if not self._VerifyServingSession(institution, session):
-#      return False
-#    return self._VerifyTeacher(institution,
-#                               session,
-#                               self.email)
-#
-#  def _VerifyServingSession(self, institution, session):
-#    serving_session = models.ServingSession.FetchEntity(institution)
-#    current_app.logger.info("currently serving session = %s" % serving_session)
-#    if serving_session.session_name == session:
-#      return True
-#    current_app.logger.error("serving session doesn't match")
-#    return False
-#
-#  def HasPageAccess(self, institution, session, current_page):
-#    serving_rules = models.ServingRules.FetchJson(institution, session)
-#    page_types = logic.StudentAllowedPageTypes(
-#            institution, session, self.student_entity, serving_rules)
-#    if current_page in page_types:
-#      return True
-#    if self.CanAdministerInstitutionFromUrl():
-#      # Needed for impersonation page
-#      return True
-#    return False
-#
-#  def GetStartPage(self, institution, session):
-#    serving_rules = models.ServingRules.FetchJson(institution, session)
-#    page_types = logic.StudentAllowedPageTypes(
-#             institution, session, self.student_entity, serving_rules)
-#    # When a student is listed under multiple serving rules,
-#    # return the start page with highest priority.
-#    if "schedule" in page_types:
-#      return "schedule"
-#    if "final" in page_types:
-#      return "postregistration"
-#    else:
-#      return "preregistration"
-#
-#  def _VerifyStudent(self, institution, session, student_email):
-#    # returns true on success
-#    students = models.Students.FetchJson(institution, session)
-#    student_entity = logic.FindUser(student_email, students)
-#    if student_entity:
-#      self.student_email = student_email
-#      self.student_entity = student_entity
-#      return True
-#    current_app.logger.error("student not found '%s'" % student_email)
-#    return False
-#
-#  def _VerifyTeacher(self, institution, session, teacher_email):
-#    # returns true on success
-#    teachers = models.Teachers.FetchJson(institution, session)
-#    teacher_entity = logic.FindUser(teacher_email, teachers)
-#    if teacher_entity:
-#      self.teacher_email = teacher_email
-#      self.teacher_entity = teacher_entity
-#      return True
-#    current_app.logger.error("teacher not found '%s'" % teacher_email)
-#    return False
-#
+    if self.CanAdministerInstitutionFromUrl():
+      return self._VerifyTeacher(institution,
+                                 session,
+                                 request.args.get("teacher","").lower() or request.form.get("teacher","").lower())
+    if not self._VerifyServingSession(institution, session):
+      return False
+    return self._VerifyTeacher(institution,
+                               session,
+                               self.email)
+
+  def _VerifyServingSession(self, institution, session):
+    serving_session = models.ServingSession.FetchEntity(institution)
+    current_app.logger.info("currently serving session = %s" % serving_session)
+    if serving_session.session_name == session:
+      return True
+    current_app.logger.error("serving session doesn't match")
+    return False
+
+  def HasPageAccess(self, institution, session, current_page):
+    serving_rules = models.ServingRules.FetchJson(institution, session)
+    page_types = logic.StudentAllowedPageTypes(
+            institution, session, self.student_entity, serving_rules)
+    if current_page in page_types:
+      return True
+    if self.CanAdministerInstitutionFromUrl():
+      # Needed for impersonation page
+      return True
+    return False
+
+  def GetStartPage(self, institution, session):
+    serving_rules = models.ServingRules.FetchJson(institution, session)
+    page_types = logic.StudentAllowedPageTypes(
+             institution, session, self.student_entity, serving_rules)
+    # When a student is listed under multiple serving rules,
+    # return the start page with highest priority.
+    if "schedule" in page_types:
+      return "schedule"
+    if "final" in page_types:
+      return "postregistration"
+    else:
+      return "preregistration"
+
+  def GetStudentInfo(self, institution, session):
+    return self.student_entity
+
+  def GetTeacherInfo(self, institution, session):
+    return self.teacher_entity
+
+  def _VerifyStudent(self, institution, session, student_email):
+    # returns true on success
+    students = models.Students.FetchJson(institution, session)
+    student_entity = logic.FindUser(student_email, students)
+    if student_entity:
+      self.student_email = student_email
+      self.student_entity = student_entity
+      return True
+    current_app.logger.error("student not found '%s'" % student_email)
+    return False
+
+  def _VerifyTeacher(self, institution, session, teacher_email):
+    # returns true on success
+    teachers = models.Teachers.FetchJson(institution, session)
+    teacher_entity = logic.FindUser(teacher_email, teachers)
+    if teacher_entity:
+      self.teacher_email = teacher_email
+      self.teacher_entity = teacher_entity
+      return True
+    current_app.logger.error("teacher not found '%s'" % teacher_email)
+    return False
+
   def Redirect(self):
       path = self._Redirect()
+      if request.url==path:
+        return OK,200
       resp = make_response(render_template('base.html', redirect=path))
       current_app.logger.info("Setting Selectives-Redirect Header to: %s", path)
       resp.headers['Selectives-Redirect'] = path
@@ -257,56 +258,56 @@ class Authorizer(object):
     if self.IsGlobalAdmin():
       current_app.logger.info("Authorizer.Redirect: Redirecting %s to index", self.email)
       return "/"
-#    # are they an institution admin?
-#    institution_list = models.Admin.GetInstitutionNames(self.email)
-#    if len(institution_list) > 1:
-#      current_app.logger.info("Redirecting %s to /pickinstitution", self.email)
-#      self.handler.redirect("/pickinstitution")
-#      return
-#    if len(institution_list) > 0:
-#      institution = institution_list[0]
-#      current_app.logger.info("Redirecting %s to /institution", self.email)
-#      self.handler.redirect("/institution?%s" % urllib.urlencode(
-#          {'institution': institution}))
-#      return
-#    # are they a student with a serving session?
-#    serving_sessions = models.ServingSession.FetchAllEntities()
-#    for ss in serving_sessions:
-#      institution = ss.institution_name
-#      session = ss.session_name
-#      verified = self.(institution,
-#                                     session,
-#                                     self.email)
-#      if verified:
-#        start_page = self.GetStartPage(institution, session)
-#        current_app.logger.info("Redirecting %s to /%s" % (self.email, start_page))
-#        self.handler.redirect("/%s?%s" % (start_page, urllib.urlencode(
-#            {'institution': institution,
-#             'session': session})))
-#        return
-#    # are they a teacher with a serving session?
-#    for ss in serving_sessions:
-#      institution = ss.institution_name
-#      session = ss.session_name
-#      start_page = "teacher/take_attendance"
-#      verified = self._VerifyTeacher(institution,
-#                                     session,
-#                                     self.email)
-#      if verified:
-#        current_app.logger.info("Redirecting %s to /%s" % (self.email, start_page))
-#        self.handler.redirect("/%s?%s" % (start_page, urllib.urlencode(
-#            {'institution': institution,
-#             'session': session})))
-#        return
-#    current_app.logger.info("Redirecting %s to /welcome", self.email)
-#    self.handler.redirect("/welcome")
+    # are they an institution admin?
+    institution_list = models.Admin.GetInstitutionNames(self.email)
+    if len(institution_list) > 1:
+      current_app.logger.info("Authorizer.Redirect: Redirecting %s to /pickinstitution", self.email)
+      return "/pickinstitution"
+    if len(institution_list) > 0:
+      institution = institution_list[0]
+      current_app.logger.info("Authorizer.Redirect: Redirecting %s to /institution", self.email)
+      return "/institution?%s" % urllib.urlencode(
+          {'institution': institution})
+    # are they a student with a serving session?
+    serving_sessions = models.ServingSession.FetchAllEntities()
+    for ss in serving_sessions:
+      institution = ss.institution_name
+      session = ss.session_name
+      verified = self._VerifyStudent(institution,
+                                     session,
+                                     self.email)
+      if verified:
+        start_page = self.GetStartPage(institution, session)
+        current_app.logger.info("Redirecting %s to /%s" % (self.email, start_page))
+        return "/%s?%s" % (start_page, urllib.parse.urlencode(
+            {'institution': institution,
+             'session': session}))
+    # are they a teacher with a serving session?
+    for ss in serving_sessions:
+      institution = ss.institution_name
+      session = ss.session_name
+      start_page = "teacher/take_attendance"
+      verified = self._VerifyTeacher(institution,
+                                     session,
+                                     self.email)
+      if verified:
+        current_app.logger.info("Redirecting %s to /%s" % (self.email, start_page))
+        return "/%s?%s" % (start_page, urllib.parse.urlencode(
+            {'institution': institution,
+             'session': session}))
+    current_app.logger.info("Redirecting %s to /welcome", self.email)
     return "/welcome"
 
-#
-#  def RedirectTemporary(self, institution, session):
-#    self.handler.redirect("/coming_soon?%s" % urllib.urlencode(
-#        {'institution': institution,
-#         'session': session}))
-#
+  def RedirectTemporary(self, institution, session):
+      path = "/coming_soon?%s" % urllib.parse.urlencode(
+          {'institution': institution,
+           'session': session})      
+      if request.url==path:
+        return OK,200
+      resp = make_response(render_template('base.html', redirect=path))
+      current_app.logger.info("Setting Selectives-Redirect Header to: %s", path)
+      resp.headers['Selectives-Redirect'] = path
+      return resp
+
 ## TODO get rid of the unnecessary handler parameter.
 ## We really want the request, not the handler, and we could get it from WebApp2.

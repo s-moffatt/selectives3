@@ -1,3 +1,7 @@
-*.pyc
+*.py[cod]
+__pycache__/
 *~
 *.swp
+
+*.bak
+.gitignore

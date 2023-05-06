@@ -1,78 +1,68 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
-import yaml
-import itertools
+from flask import render_template, redirect, request, current_app, jsonify, abort
+from flask.views import MethodView
+import urllib.parse
 
 import models
 import authorizer
 import logic
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
 
-
-class Preferences(webapp2.RequestHandler):
+class Preferences(MethodView):
 
   def RedirectToSelf(self, institution, session, student, message):
-    self.redirect("/preferences?%s" % urllib.urlencode(
+    return redirect("/preferences?%s" % urllib.parse.urlencode(
         {'message': message, 
          'student': student,
          'institution': institution,
          'session': session}))
 
   def post(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.HasStudentAccess():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
+      current_app.logger.critical("no session")
+
     email = auth.student_email
-    want = self.request.get("want").split(",")
+    want = request.form.get("want","").split(",")
     if want[0] == '':
       want.pop(0)
-    dontcare = self.request.get("dontcare").split(",")
+    dontcare = request.form.get("dontcare","").split(",")
     if dontcare[0] == '':
       dontcare.pop(0)
-    dontwant = self.request.get("dontwant").split(",")
+    dontwant = request.form.get("dontwant","").split(",")
     if dontwant[0] == '':
       dontwant.pop(0)
     models.Preferences.Store(email, institution, session,
                              want, dontcare, dontwant)
-    if self.request.get("Save") == "Save":
-      logging.info("Form Saved")
+    if request.form.get("Save") == "Save":
+      current_app.logger.info("Form Saved")
     else:
-      logging.info("Auto Save")
-    self.RedirectToSelf(institution, session, email, "Saved Preferences")
+      current_app.logger.info("Auto Save")
+    return self.RedirectToSelf(institution, session, email, "Saved Preferences")
 
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.HasStudentAccess():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
-    if not auth.HasPageAccess(institution, session, "preferences"):
-      auth.RedirectTemporary(institution, session)
-      return
+      current_app.logger.critical("no session")
 
-    message = self.request.get('message')
-    session_query = urllib.urlencode({'institution': institution,
+    if not auth.HasPageAccess(institution, session, "preferences"):
+      return auth.RedirectTemporary(institution, session)
+      
+    message = request.args.get('message')
+    session_query = urllib.parse.urlencode({'institution': institution,
                                       'session': session})
 
     classes = models.Classes.FetchJson(institution, session)
@@ -95,9 +85,10 @@ class Preferences(webapp2.RequestHandler):
 
     prefs = models.Preferences.FetchEntity(
         auth.student_email, institution, session)
-    want_ids = prefs.want.split(',')
-    dontcare_ids = prefs.dontcare.split(',')
-    dontwant_ids = prefs.dontwant.split(',')
+    current_app.logger.critical(f"prefs={prefs}")
+    want_ids     = prefs.get("want","").split(',')
+    dontcare_ids = prefs.get("dontcare","").split(',')
+    dontwant_ids = prefs.get("dontwant","").split(',')
 
     new_class_ids = eligible_class_ids.difference(want_ids)
     new_class_ids = new_class_ids.difference(dontcare_ids)
@@ -114,20 +105,18 @@ class Preferences(webapp2.RequestHandler):
     want_ids = list(RemoveDeletedClasses(want_ids))
     dontcare_ids = list(RemoveDeletedClasses(dontcare_ids))
     dontwant_ids = list(RemoveDeletedClasses(dontwant_ids))
-    logging.info('want: ' + ','.join(want_ids));
-    logging.info('dont want: ' + ','.join(dontwant_ids));
-    logging.info('dont care: ' + ','.join(dontcare_ids));
-    template_values = {
-      'user_email' : auth.email,
-      'institution' : institution,
-      'session' : session,
-      'message': message,
-      'session_query': session_query,
-      'classes': classes_by_id,
-      'student': auth.student_entity,
-      'want_ids': want_ids,
-      'dontwant_ids': dontwant_ids,
-      'dontcare_ids': dontcare_ids,
-    }
-    template = JINJA_ENVIRONMENT.get_template('preferences.html')
-    self.response.write(template.render(template_values))
+    current_app.logger.info('want: ' + ','.join(want_ids));
+    current_app.logger.info('dont want: ' + ','.join(dontwant_ids));
+    current_app.logger.info('dont care: ' + ','.join(dontcare_ids));
+    return render_template("preferences.html",
+      uid=auth.uid,
+      institution=institution,
+      session=session,
+      message=message,
+      session_query=session_query,
+      classes=classes_by_id,
+      student=auth.student_entity,
+      want_ids=want_ids,
+      dontwant_ids=dontwant_ids,
+      dontcare_ids=dontcare_ids,
+    )

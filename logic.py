@@ -1,15 +1,13 @@
 import models
 import yaml
-import logging
+from flask import current_app
+from retry import retry
 import random
 import schemas
-try:
-  from google.appengine.ext import ndb
-except:
-  logging.info("google.appengine.ext not found. "
-                "We must be running in a unit test.")
-  import fake_ndb
-  ndb = fake_ndb.FakeNdb()
+import json
+
+from google.cloud import datastore
+client = datastore.Client()
 
 
 # TODO: replace each newline with </div><div>
@@ -81,7 +79,7 @@ def GetStudentNamesSorted(students, roster_emails):
     try:
       s = students_by_email[roster_email]
     except KeyError:
-      logging.fatal("HoverText - invalid student in roster!")
+      current_app.logger.critical("HoverText - invalid student in roster!")
       roster_names.append(roster_email)
     else:
       roster_names.append(s['first'] + ' ' +
@@ -221,9 +219,9 @@ class _ClassInfo(object):
   def getClassObj(self, class_id):
     class_obj = self.classes_by_id[class_id]
     if not class_obj:
-      logging.fatal('no class_obj')
+      current_app.logger.critical('no class_obj')
     if not 'id' in class_obj:
-      logging.fatal('class_obj has no id')
+      current_app.logger.critical('class_obj has no id')
     return class_obj
 
   def RemoveConflicts(self, class_ids, new_class_id):
@@ -289,50 +287,58 @@ class _StudentSchedule(object):
         self.institution, self.session, self.student_email, class_ids)
 
 
-@ndb.transactional(retries=3, xg=True)
+#@ndb.transactional(retries=3, xg=True)
+@retry(tries=3)
 def AddStudentToClass(institution, session, student_email, new_class_id):
-  class_info = _ClassInfo(institution, session)
-  class_obj = class_info.getClassObj(new_class_id)
-  r = _ClassRoster(institution, session, class_obj)
-  if r.SpotsAvailable() <= 0:
-    return
-  r.add(student_email)
-  s = _StudentSchedule(institution, session, student_email, class_info)
-  s.add(new_class_id)
-  for old_class_id in class_info.removed_class_ids:
+  with client.transaction():
+    class_info = _ClassInfo(institution, session)
+    class_obj = class_info.getClassObj(new_class_id)
+    r = _ClassRoster(institution, session, class_obj)
+    if r.SpotsAvailable() <= 0:
+      return
+    r.add(student_email)
+    s = _StudentSchedule(institution, session, student_email, class_info)
+    s.add(new_class_id)
+    for old_class_id in class_info.removed_class_ids:
+      class_obj = class_info.getClassObj(old_class_id)
+      r = _ClassRoster(institution, session, class_obj)
+      r.remove(student_email)
+
+
+#@ndb.transactional(retries=3, xg=True)
+@retry(tries=3)
+def RemoveStudentFromClass(institution, session, student_email, old_class_id):
+  with client.transaction():
+    class_info = _ClassInfo(institution, session)
     class_obj = class_info.getClassObj(old_class_id)
     r = _ClassRoster(institution, session, class_obj)
     r.remove(student_email)
+    s = _StudentSchedule(institution, session, student_email, class_info)
+    s.remove(old_class_id)
 
-
-@ndb.transactional(retries=3, xg=True)
-def RemoveStudentFromClass(institution, session, student_email, old_class_id):
-  class_info = _ClassInfo(institution, session)
-  class_obj = class_info.getClassObj(old_class_id)
-  r = _ClassRoster(institution, session, class_obj)
-  r.remove(student_email)
-  s = _StudentSchedule(institution, session, student_email, class_info)
-  s.remove(old_class_id)
-
-@ndb.transactional(retries=3, xg=True)
+#@ndb.transactional(retries=3, xg=True)
+@retry(tries=3)
 def AddStudentToWaitlist(institution, session, student_email, class_id):
   # No need to check SpotsAvailable or add to StudentSchedule
   # Just make sure student is not already in waitlist
-  w = models.ClassWaitlist.FetchEntity(institution, session, class_id)
-  if student_email in w['emails']:
-    pass
-  else:
-    w['emails'].append(student_email)
-    emails = list(set(w['emails']))
+  with client.transaction():
+    w = models.ClassWaitlist.FetchEntity(institution, session, class_id)
+    if student_email in w['emails']:
+      pass
+    else:
+      w['emails'].append(student_email)
+      emails = list(set(w['emails']))
+      emails = ','.join(emails)
+      models.ClassWaitlist.Store(institution, session, class_id, emails)
+
+#@ndb.transactional(retries=3, xg=True)
+@retry(tries=3)
+def RemoveStudentFromWaitlist(institution, session, student_email, class_id):
+  with client.transaction():
+    w = models.ClassWaitlist.FetchEntity(institution, session, class_id)
+    emails = [s for s in w['emails'] if s != student_email]
     emails = ','.join(emails)
     models.ClassWaitlist.Store(institution, session, class_id, emails)
-
-@ndb.transactional(retries=3, xg=True)
-def RemoveStudentFromWaitlist(institution, session, student_email, class_id):
-  w = models.ClassWaitlist.FetchEntity(institution, session, class_id)
-  emails = [s for s in w['emails'] if s != student_email]
-  emails = ','.join(emails)
-  models.ClassWaitlist.Store(institution, session, class_id, emails)
 
 
 def RunLottery(institution, session, cid, candidates):
@@ -349,7 +355,7 @@ def RunLottery(institution, session, cid, candidates):
   # Either admin didn't select enough people or admin allowed
   # open enrollment when there weren't enough spots.
   if len(winners) >= r['max_enrollment']:
-    logging.error("Too many non-lottery students; class size exceeds maximum enrollment. Try selecting more students to lottery. Lottery aborted.")
+    current_app.logger.error("Too many non-lottery students; class size exceeds maximum enrollment. Try selecting more students to lottery. Lottery aborted.")
     return
 
   random.shuffle(candidates)
@@ -378,8 +384,9 @@ def RunLottery(institution, session, cid, candidates):
     # Entire StudentGroup list is empty, create new list
     sgroup = [{'group_name': group_name,
                'emails': winners}]
+  sgroup = json.loads(json.dumps(sgroup))
   sgroup = schemas.StudentGroups().Update(yaml.safe_dump(sgroup, default_flow_style=False))
-  models.GroupsStudents.store(institution, session, sgroup)
+  models.GroupsStudents.Store(institution, session, sgroup)
 
   class_list = models.Classes.FetchJson(institution, session)
   for c in class_list:
@@ -394,9 +401,11 @@ def RunLottery(institution, session, cid, candidates):
       # Remove open_enrollment field
       result = c.pop('open_enrollment', None)
       if (result == None):
-        logging.error("Extra students found while class is not in open enrollment")
+        current_app.logger.error("Extra students found while class is not in open enrollment")
       # Update roster class_obj to match above class changes
       r = models.ClassRoster.FetchEntity(institution, session, c['id'])
       models.ClassRoster.Store(institution, session, c, ','.join(r['emails']))
+
+  class_list = json.loads(json.dumps(class_list))
   class_list = schemas.Classes().Update(yaml.safe_dump(class_list, default_flow_style=False))
-  models.Classes.store(institution, session, class_list)
+  models.Classes.Store(institution, session, class_list)

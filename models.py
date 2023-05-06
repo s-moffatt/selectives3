@@ -1,11 +1,13 @@
 from datetime import datetime
 from flask import current_app
 
+import yaml
+import json
 
 from google.cloud import datastore
 
-db = datastore.Client()
-GLOBAL_KEY = db.key("global", "global")
+Client = datastore.Client()
+GLOBAL_KEY = Client.key("global", "global")
 
 # TODO: make all methods camel case with initial caps
 # TODO: Fetch methods should come in predictable flavors:
@@ -30,7 +32,7 @@ class Model():
     ancestors = cls.ancestors
     if ancestors:
       path = Model.paths(cls.ancestors,parent_key_args)
-      return db.key(*path)
+      return Client.key(*path)
     return None
 
   @classmethod
@@ -44,7 +46,7 @@ class Model():
       parent_key = cls.parent_key()
     path.append(cls.__name__)
     path.append(path_args[len(ancestors)])  
-    return db.key(*path, parent=parent_key, **kwargs)  
+    return Client.key(*path, parent=parent_key, **kwargs)  
 
   @classmethod
   def Store(cls, *path_args, data={}, **kwargs):
@@ -53,20 +55,20 @@ class Model():
     data.update({'date_time': datetime.now()})
     if data:
       entity.update(data)
-    return db.put(entity)
+    return Client.put(entity)
 
   @classmethod
   def Delete(cls, *path_args, **kwargs):
-    db.delete(cls.key(*path_args, **kwargs))
+    Client.delete(cls.key(*path_args, **kwargs))
 
   @classmethod
   def FetchEntity(cls, *path_args, **kwargs):
-    entity = db.get(cls.key(*path_args, **kwargs))
+    entity = Client.get(cls.key(*path_args, **kwargs))
     return entity
 
   @classmethod
   def Fetch(cls,order=['__key__'],ancestor=None,filters=[],limit=None):
-    query = db.query(kind=cls.__name__,ancestor=ancestor,order=order)
+    query = Client.query(kind=cls.__name__,ancestor=ancestor,order=order)
     for i in filters:
       query.add_filter(*i)
     results = list(query.fetch(limit=limit))
@@ -114,22 +116,37 @@ class Attribute(Model):
     entity = cls.FetchEntity(*args)
     return entity.get("data") if entity else cls.default
 
-class YamlJsonAttribute(Attribute):
+class YamlJsonAttribute(Model):
+  attribute = None
   default = ''
-  defaultJson = None
+  defaultJson = []
+
+  @classmethod
+  def key(cls, *args):
+    nargs = list(args)
+    nargs.append(cls.attribute)
+    return super().key(*nargs)
+
+  @classmethod
+  def Store(cls, *args):
+    nargs=list(args)
+    data = nargs.pop()
+    jdata = yaml.safe_load(data) if data else cls.defaultJson
+    current_app.logger.info(f"validated data to be posted={jdata}")
+    return super().Store(*nargs, data={
+      "data" : data if data else cls.default,
+      "jdata": jdata})
+
+  @classmethod
+  def Fetch(cls, *args):
+    entity = cls.FetchEntity(*args)
+    return entity.get("data") if entity else cls.default
 
   @classmethod
   def FetchJson(cls, *args):
     entity = cls.FetchEntity(*args)
     return entity.get("jdata") if entity else cls.defaultJson
 
-  @classmethod
-  def Store(cls, *args):
-    nargs=list(args)
-    data = nargs.pop()
-    return super().Store(*nargs, data={
-      "data" : data if data else cls.default,
-      "jdata": yaml.load(data) if data else cls.defaultJson})
 
 #-------------------------------------
 class GlobalAdmin(Model):
@@ -139,7 +156,7 @@ class GlobalAdmin(Model):
     return GLOBAL_KEY
 
 class Admin(Model):
-  ancestors = ["Institution"]
+  ancestors = ["InstitutionKey"]
 
   @classmethod
   def GetInstitutionNames(cls, email):
@@ -152,7 +169,7 @@ class Institution(Model):
     return GLOBAL_KEY
 
 class Session(Model):
-  ancestors = ["Institution"]
+  ancestors = ["InstitutionKey"]
 
   @classmethod
   def enable(cls, institution, session):
@@ -165,7 +182,7 @@ class Session(Model):
       elif entity.key.id_or_name != session and entity.get('active'):
         entity['active'] = False
         changed.append(entity)
-    db.put_multi(changed)
+    Client.put_multi(changed)
 
   @classmethod
   def disable(cls, institution, session):
@@ -173,7 +190,7 @@ class Session(Model):
     entity = cls.FetchEntity(institution, session)
     if entity:
       entity['active'] = False
-      db.put(entity)
+      Client.put(entity)
     else:
       current_app.logger.error("session key not found: %s, %s", institution, session)
 
@@ -185,46 +202,109 @@ class Session(Model):
 
 class ServingRules(YamlJsonAttribute):
   """List of serving rules in yaml and json format."""
+  ancestors = ["InstitutionKey","Session"]
   attribute = "serving_rules"
 
 
 class Dayparts(YamlJsonAttribute):
   """Examples: Monday AM, or M-W-F 8am-9am"""
+  ancestors = ["InstitutionKey","Session"]
   attribute = "dayparts"
 
 class Classes(YamlJsonAttribute):
   """List of classes in yaml and json format."""
+  ancestors = ["InstitutionKey","Session"]
   attribute = "classes"
+
+  @classmethod
+  def Store(cls, institution, session, classes):
+    super().Store(institution, session, classes)
+    # ClassRoster saves a copy of class info in its own jclass_obj
+    # (for efficiency?). When Classes changes, make sure
+    # ClassRoster's jclass_obj stays in sync by calling
+    # ClassRoster.Store(). Otherwise, odd things happen.
+    #
+    # Also, calling ClassRoster.Store() when there are changes
+    # to Classes, udpates the last_modified field. This fixes the
+    # bug where last modified dates on attendance sheet and student
+    # schedule reports don't update when only Classes info changed
+    # but no students were added or deleted.
+    #
+    # Finally, storing every ClassRoster when the corresponding
+    # class is created (because, of course, initially jclass_obj != c),
+    # fixes the bug where remaining spots on the schedule page
+    # initializes incorrectly to 0 instead of max_enrollment.    
+    classes = yaml.safe_load(classes)
+    for c in classes:
+      roster = ClassRoster.FetchEntity(institution, session, c['id'])
+      if not roster or c != roster['class_details']:
+        ClassRoster.Store(institution, session, c, ",".join(roster['emails']) if roster else '')
 
 class Students(YamlJsonAttribute):
   """List of students in yaml and json format."""
+  ancestors = ["InstitutionKey","Session"]
   attribute = "students"
 
 class Teachers(YamlJsonAttribute):
   """List of teachers in yaml and json format."""
+  ancestors = ["InstitutionKey","Session"]
   attribute = "teachers"
 
 class AutoRegister(YamlJsonAttribute):
   """Examples: 8th Core, 7th Core, 6th Core"""
+  ancestors = ["InstitutionKey","Session"]
   attribute = "auto_register"
 
-class Requirements(YamlJsonAttribute):
+class Requirements(Model):
   """Examples: one PE required, PEs must be on opposite sides of the week"""
+  ancestors = ["InstitutionKey","Session"]
   attribute = "requirements"
+  defaultJson = '[]'
+
+  @classmethod
+  def key(cls, *args):
+    nargs = list(args)
+    nargs.append(cls.attribute)
+    return super().key(*nargs)
+
+  @classmethod
+  def Fetch(cls, *args):
+    entity = cls.FetchEntity(*args)
+    return entity.get("data") if entity else cls.default
+
+  # for Google datastore, list_value cannot contain a Value containing another list_value. 
+  # workaround by storing serialized Json string
+  @classmethod
+  def Store(cls, *args):
+    nargs=list(args)
+    data = nargs.pop()
+    jdata = yaml.safe_load(data) if data else cls.defaultJson
+    current_app.logger.info(f"validated data to be posted={jdata}")
+    return super().Store(*nargs, data={
+      "data" : data if data else cls.default,
+      "jdata": json.dumps(jdata)})
+
+  @classmethod
+  def FetchJson(cls, *args):
+    entity = cls.FetchEntity(*args)
+    jdata = entity.get("jdata") if entity else cls.defaultJson
+    return json.loads(jdata)
 
 class GroupsClasses(YamlJsonAttribute):
   """List of class groups in yaml and json format."""
+  ancestors = ["InstitutionKey","Session"]
   attribute = "groups_classes"
 
 class GroupsStudents(YamlJsonAttribute):
   """List of student groups in yaml and json format."""
+  ancestors = ["InstitutionKey","Session"]
   attribute = "groups_students"
 
 class RecentAccess(Model):
   pass
 
 class Preferences(Model):
-  ancestors = ["Institution","Session"]
+  ancestors = ["InstitutionKey","Session"]
 
   @classmethod
   def Store(cls, email, institution, session, want, dontcare, dontwant):
@@ -245,24 +325,25 @@ class Preferences(Model):
                       "\nwant: " + ','.join(want) + 
                       "\ndontcare: " + ','.join(dontcare) +
                       "\ndontwant: " + ','.join(dontwant))
-    prefs["email"] = email
-    prefs["want"] = ','.join(want)
-    prefs["dontcare"] = ','.join(dontcare)
-    prefs["dontwant"] = ','.join(dontwant)
-    current_app.logger.info('saving preferences = %s' % prefs)
-    super().Store(institution,session,email,data={"preferences":prefs})
+    prefs = {
+      "email": email,
+      "want": ','.join(want),
+      "dontcare": ','.join(dontcare),
+      "dontwant": ','.join(dontcare) }
+    #current_app.logger.info('saving preferences = %s' % prefs)
+    super().Store(institution,session,email,data=prefs)
 
   @classmethod
   def FetchEntity(cls, email, institution, session):
     entity = super().FetchEntity(institution, session, email)
-    return entity.get("preferences") if entity else {
+    return entity or {
       "email": email,
       "want": "",
       "dontcare": "",
       "dontwant": "" }
 
 class Schedule(Model):
-  ancestors = ["Institution","Session"]
+  ancestors = ["InstitutionKey","Session"]
 
   @classmethod
   def Store(cls, institution, session, email, class_ids):
@@ -281,44 +362,25 @@ class Schedule(Model):
     return entity.get("class_ids","").strip(',').strip() if entity else ""
 
 class ClassRoster(Model):
+  ancestors = ["InstitutionKey","Session"]
 #  # comma separated list of student emails
-#  student_emails = ndb.TextProperty()
+#  student_emails = nClient.TextProperty()
 #  # class obj, yaml.dump and yaml.load takes too long
-#  jclass_obj = ndb.JsonProperty()
-#  last_modified = ndb.DateTimeProperty()
+#  jclass_obj = nClient.JsonProperty()
+#  last_modified = nClient.DateTimeProperty()
 
   @classmethod
   def Store(cls, institution, session, class_obj, student_emails):
+    class_id = str(class_obj['id'])
     student_emails = student_emails.strip()
     if len(student_emails) and student_emails[-1] == ',':
       student_emails = student_emails[:-1]
-    class_id = str(class_obj['id'])
-    roster = {}
-    if set(want).intersection(dontcare):
-      raise Exception("some classes are in both want and dontcare." +
-                      "\nwant: " + ','.join(want) + 
-                      "\ndontcare: " + ','.join(dontcare) +
-                      "\ndontwant: " + ','.join(dontwant))
-    if set(dontcare).intersection(dontwant):
-      raise Exception("some classes are in both dontcare and dontwant" +
-                      "\nwant: " + ','.join(want) + 
-                      "\ndontcare: " + ','.join(dontcare) +
-                      "\ndontwant: " + ','.join(dontwant))
-    if set(want).intersection(dontwant):
-      raise Exception("some classes are in both want and dontwant" +
-                      "\nwant: " + ','.join(want) + 
-                      "\ndontcare: " + ','.join(dontcare) +
-                      "\ndontwant: " + ','.join(dontwant))
-    prefs["email"] = email
-    prefs["want"] = ','.join(want)
-    prefs["dontcare"] = ','.join(dontcare)
-    prefs["dontwant"] = ','.join(dontwant)
-    current_app.logger.info('saving preferences = %s' % prefs)
-    super().Store(institution,session,email,data={"preferences":prefs})
-#    roster = ClassRoster()
-#    roster.key = ClassRoster.class_roster_key(institution, session, class_id)
-#    roster.student_emails = student_emails
-#    roster.jclass_obj = class_obj
+    roster = {
+      "student_emails" : student_emails,
+      "jclass_obj"     : class_obj}
+    #current_app.logger.info('saving class_roster = %s' % roster)
+    super().Store(institution, session, class_id, data=roster)
+
 #    # Appengine datetimes are stored in UTC, so by around 4pm the date is wrong.
 #    # This is a kludgy way to get PST. It doesn't handle daylight savings time,
 #    # but off by one hour is better than off by eight.
@@ -328,227 +390,136 @@ class ClassRoster(Model):
 #    # Don't use hour because it will be wrong half the year.
 #    # If someone wants to do this the "right" way later, that would be fine.
 #    roster.last_modified = datetime.datetime.now() - datetime.timedelta(hours=8)
-#    roster.put()
-#
-#  @classmethod
-#  @timed
-#  def FetchEntity(cls, institution, session, class_id):
-#    class_id = str(class_id)
-#    roster = ClassRoster.class_roster_key(institution, session, class_id).get()
-#    if roster:
-#      c = roster.jclass_obj
-#      r = {}
-#      r['emails'] = roster.student_emails.split(",")
-#      if r['emails'][0] == "":
-#        r['emails'] = r['emails'][1:]
-#      r['class_name'] = c['name']
-#      r['class_id'] = c['id']
-#      if 'instructor' in c:
-#        r['instructor'] = c['instructor']
-#      r['schedule'] = c['schedule']
-#      r['class_details'] = roster.jclass_obj
-#      if 'max_enrollment' in c:
-#        r['max_enrollment'] = c['max_enrollment']
-#      if 'open_enrollment' in c:
-#        r['open_enrollment'] = c['open_enrollment']
-#        r['remaining_space'] = c['open_enrollment'] - len(r['emails'])
-#      elif 'max_enrollment' in c:
-#        r['remaining_space'] = c['max_enrollment'] - len(r['emails'])
-#      else:
-#        r['remaining_space'] = 0
-#      if 'max_enrollment' in c:
-#        r['remaining_firm'] = c['max_enrollment'] - len(r['emails'])
-#      else:
-#        r['remaining_firm'] = 0
-#      if (roster.last_modified):
-#        r['last_modified'] = roster.last_modified
-#      else:
-#        r['last_modified'] = None
-#      return r
-#    current_app.logger.info("Class Roster NOT found: [%s] [%s] [%s]" % (
-#          institution, session, class_id))
-#    r = {}
-#    r['emails'] = []
-#    r['class_id'] = 0
-#    r['class_name'] = 'None'
-#    r['schedule'] = {}
-#    r['class_details'] = ''
-#    r['max_enrollment'] = 0
-#    r['remaining_space'] = 0
-#    r['remaining_firm'] = 0
-#    r['last_modified'] = None
-#    return r
-#
-#class ClassWaitlist(ndb.Model):
-#  # comma separated list of student emails
-#  student_emails = ndb.TextProperty()
-#  last_modified = ndb.DateTimeProperty()
-#
-#  @classmethod
-#  @timed
-#  def class_waitlist_key(cls, institution, session, class_id):
-#    class_id = str(class_id)
-#    return ndb.Key("InstitutionKey", institution,
-#                   Session, session,
-#                   ClassWaitlist, class_id)
-#
-#  @classmethod
-#  @timed
-#  def Store(cls, institution, session, class_id, student_emails):
-#    student_emails = student_emails.strip()
-#    if len(student_emails) and student_emails[-1] == ',':
-#      student_emails = student_emails[:-1]
-#    waitlist = ClassWaitlist()
-#    waitlist.key = ClassWaitlist.class_waitlist_key(institution, session, class_id)
-#    waitlist.student_emails = student_emails
-#    waitlist.last_modified = datetime.datetime.now() - datetime.timedelta(hours=8)
-#    waitlist.put()
-#
-#  @classmethod
-#  @timed
-#  def FetchEntity(cls, institution, session, class_id):
-#    class_id = str(class_id)
-#    waitlist = ClassWaitlist.class_waitlist_key(institution, session, class_id).get()
-#    if waitlist:
-#      w = {}
-#      w['emails'] = waitlist.student_emails.split(",")
-#      if w['emails'][0] == "":
-#        w['emails'] = w['emails'][1:]
-#      return w
-#    else:
-#      return {'emails': []}
+
+  @classmethod
+  def FetchEntity(cls, institution, session, class_id):
+    class_id = str(class_id)
+    entity = super().FetchEntity(institution, session, class_id)
+    if entity:
+      c = entity.get("jclass_obj")
+      r = {}
+      r['emails'] = entity.get("student_emails").split(",")
+      if r['emails'][0] == "":
+        r['emails'] = r['emails'][1:]
+      r['class_name'] = c['name']
+      r['class_id'] = c['id']
+      if 'instructor' in c:
+        r['instructor'] = c['instructor']
+      r['schedule'] = c['schedule']
+      r['class_details'] = entity.get("jclass_obj")
+      if 'max_enrollment' in c:
+        r['max_enrollment'] = c['max_enrollment']
+      if 'open_enrollment' in c:
+        r['open_enrollment'] = c['open_enrollment']
+        r['remaining_space'] = c['open_enrollment'] - len(r['emails'])
+      elif 'max_enrollment' in c:
+        r['remaining_space'] = c['max_enrollment'] - len(r['emails'])
+      else:
+        r['remaining_space'] = 0
+      if 'max_enrollment' in c:
+        r['remaining_firm'] = c['max_enrollment'] - len(r['emails'])
+      else:
+        r['remaining_firm'] = 0
+      if (entity.get("date_time")):
+        r['last_modified'] = entity.get("date_time")
+      else:
+        r['last_modified'] = None
+      return r
+    current_app.logger.info("Class Roster NOT found: [%s] [%s] [%s]" % (
+          institution, session, class_id))
+    r = {}
+    r['emails'] = []
+    r['class_id'] = 0
+    r['class_name'] = 'None'
+    r['schedule'] = {}
+    r['class_details'] = ''
+    r['max_enrollment'] = 0
+    r['remaining_space'] = 0
+    r['remaining_firm'] = 0
+    r['last_modified'] = None
+    return r
+
+class ClassWaitlist(Model):
+  ancestors = ["InstitutionKey","Session"]
+  # comma separated list of student emails
+  @classmethod
+  def Store(cls, institution, session, class_id, student_emails):
+    class_id = str(class_id)
+    student_emails = student_emails.strip()
+    if len(student_emails) and student_emails[-1] == ',':
+      student_emails = student_emails[:-1]
+    super().Store(institution, session, class_id, data={
+      "student_emails" : student_emails})
+
+  @classmethod
+  def FetchEntity(cls, institution, session, class_id):
+    class_id = str(class_id)
+    entity = super().FetchEntity(institution, session, class_id)
+    if entity:
+      w = {}
+      w['emails'] = entity.get("student_emails").split(",")
+      if w['emails'][0] == "":
+        w['emails'] = w['emails'][1:]
+      return w
+    else:
+      return {'emails': []}
 
 class ErrorCheck(Attribute):
+  ancestors = ["InstitutionKey","Session"]
   attribute = 'errorcheck'
   default = 'UNKNOWN'
 
 class DBVersion(Attribute):
+  ancestors = ["InstitutionKey","Session"]
   attribute = "db_version"
   default = 0
 
-#class Attendance(ndb.Model):
-#  jdata = ndb.JsonProperty()
-#
-#  # 'c_id' is a class id.
-#  # 'jdata' is a dictionary whose keys are dates which map to objects
-#  # representing attendance taken that date.
-#  # {date1: { 'absent': [email1, email2, ...],
-#  #           'present': [email1, email2, ...],
-#  #           'submitted_by': email,
-#  #           'submitted_date': date1,
-#  #           'note': string },
-#  #  date2: { . . . }
-#  # }
-#  @classmethod
-#  def attendance_key(cls, institution, session, c_id):
-#    return ndb.Key("InstitutionKey", institution,
-#                   Session, session,
-#                   Attendance, c_id)
-#
-#  @classmethod
-#  def FetchJson(cls, institution, session, c_id):
-#    attendance = Attendance.attendance_key(institution, session, c_id).get()
-#    if attendance:
-#      return attendance.jdata
-#    else:
-#      return {}
-#
-#  @classmethod
-#  def store(cls, institution, session, c_id, attendance_obj):
-#    attendance = Attendance(jdata = attendance_obj)
-#    attendance.key = Attendance.attendance_key(institution, session, c_id)
-#    attendance.put()
-#
-#class Closed(ndb.Model):
-#  data = ndb.TextProperty()
-#
-#  @classmethod
-#  @timed
-#  def closed_key(cls, institution, session):
-#    return ndb.Key("InstitutionKey", institution,
-#                   Session, session,
-#                   Closed, "closed")
-#
-#  @classmethod
-#  @timed
-#  def Fetch(cls, institution, session):
-#    closed = Closed.closed_key(institution, session).get()
-#    if closed:
-#      return closed.data
-#    else:
-#      return ''
-#
-#  @classmethod
-#  @timed
-#  def store(cls, institution, session_name, closed):
-#    closed = Closed(data = closed)
-#    closed.key = Closed.closed_key(institution, session_name)
-#    closed.put()
-#
-#class Materials(ndb.Model):
-#  data = ndb.TextProperty()
-#
-#  @classmethod
-#  @timed
-#  def materials_key(cls, institution, session):
-#    return ndb.Key("InstitutionKey", institution,
-#                   Session, session,
-#                   Materials, "materials")
-#
-#  @classmethod
-#  @timed
-#  def Fetch(cls, institution, session):
-#    materials = Materials.materials_key(institution, session).get()
-#    if materials:
-#      return materials.data
-#    else:
-#      return ''
-#
-#  @classmethod
-#  @timed
-#  def store(cls, institution, session_name, materials):
-#    materials = Materials(data = materials)
-#    materials.key = Materials.materials_key(institution, session_name)
-#    materials.put()
-#
+class Attendance(Model):
+  ancestors = ["InstitutionKey","Session"]
+  # 'class_id' is a class id.
+  # 'jdata' is a dictionary whose keys are dates which map to objects
+  # representing attendance taken that date.
+  # {date1: { 'absent': [email1, email2, ...],
+  #           'present': [email1, email2, ...],
+  #           'submitted_by': email,
+  #           'submitted_date': date1,
+  #           'note': string },
+  #  date2: { . . . }
+  # }
+  def Store(cls, institution, session, class_id, attendance_obj):
+    class_id = str(class_id)
+    super().Store(institution, session, class_id, data=attendance_obj)
+
+  @classmethod
+  def FetchJson(cls, institution, session, class_id):
+    class_id = str(class_id)
+    entity = super().FetchEntity(institution, session, class_id)
+    return entity.items() if entity else {}
+
+class Closed(Attribute):
+  ancestors = ["InstitutionKey","Session"]
+  attribute = 'closed'
+  default = ''
+
+class Materials(Attribute):
+  ancestors = ["InstitutionKey","Session"]
+  attribute = 'materials'
+  default = ''
 
 class Welcome(Attribute):
   attribute = "welcome"
   default = ""
 
-#class Config(ndb.Model):
-#  htmlDesc = ndb.StringProperty()
-#  displayRoster = ndb.StringProperty()
-#  twoPE = ndb.StringProperty()
-#
-#  @classmethod
-#  @timed
-#  def config_key(cls, institution, session):
-#    return ndb.Key("InstitutionKey", institution,
-#                   Session, session,
-#                   Config, "config")
-#
-#  @classmethod
-#  @timed
-#  def Fetch(cls, institution, session):
-#    config = Config.config_key(institution, session).get()
-#    if config:
-#      cfg = {'displayRoster': config.displayRoster,
-#             'htmlDesc': config.htmlDesc,
-#             'twoPE': config.twoPE}
-#      return cfg
-#    else:
-#      return {'displayRoster': 'dRNo',
-#              'htmlDesc': 'htmlNo',
-#              'twoPE': 'twoPENo'}
-#
-#  @classmethod
-#  @timed
-#  def store(cls, institution, session_name, displayRoster, htmlDesc, twoPE):
-#    config = Config()
-#    config.key = Config.config_key(institution, session_name)
-#    config.htmlDesc = htmlDesc
-#    config.displayRoster = displayRoster
-#    config.twoPE = twoPE
-#    config.put()
-#
+class Config(Attribute):
+  ancestors = ["InstitutionKey","Session"]
+  attribute = "config"
+  default = {'displayRoster': 'dRNo',
+              'htmlDesc': 'htmlNo',
+              'twoPE': 'twoPENo'}
+
+  @classmethod
+  def Store(cls, institution, session_name, displayRoster, htmlDesc, twoPE):
+    super().Store(institution, session_name, {
+      'displayRoster': displayRoster,
+      'htmlDesc'     : htmlDesc,
+      'twoPE'        : twoPE})

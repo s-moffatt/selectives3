@@ -1,49 +1,40 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
-import json
+from flask import render_template, redirect, request, current_app, jsonify, abort
+from flask.views import MethodView
+import urllib.parse
 
 import models
 import authorizer
 import logic
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
 
 
-class Schedule(webapp2.RequestHandler):
+class Schedule(MethodView):
 
   def RedirectToSelf(self, institution, session, student, message):
-    self.redirect("/schedule?%s" % urllib.urlencode(
+    return redirect("/schedule?%s" % urllib.parse.urlencode(
         {'message': message, 
          'student': student,
          'institution': institution,
          'session': session}))
 
   def post(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.HasStudentAccess():
-      self.response.status = 403 # Forbidden
-      return
+      abort(403) # Forbidden
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution") or request.form.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session") or request.form.get("session")
     if not session:
-      logging.fatal("no session")
+      current_app.logger.critical("no session")
 
     if not auth.HasPageAccess(institution, session, "schedule"):
-      self.response.status = 403 # Forbidden
-      return
+      abort(403) # Forbidden
 
     email = auth.student_email
-    class_id = self.request.get("class_id")
-    action = self.request.get("action")
+    class_id = request.form.get("class_id")
+    action = request.form.get("action")
 
     if action == "add":
       logic.AddStudentToClass(institution, session, email, class_id)
@@ -53,26 +44,25 @@ class Schedule(webapp2.RequestHandler):
     schedule = schedule.split(",")
     if schedule and schedule[0] == "":
       schedule = schedule[1:]
-    self.response.write(json.dumps(schedule))
+    return jsonify(schedule)
 
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.HasStudentAccess():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution") or request.form.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session") or request.form.get("session")
     if not session:
-      logging.fatal("no session")
+      current_app.logger.critical("no session")
+      
     if not auth.HasPageAccess(institution, session, "schedule"):
-      auth.RedirectTemporary(institution, session)
-      return
+      return auth.RedirectTemporary(institution, session)
 
-    message = self.request.get('message')
-    session_query = urllib.urlencode({'institution': institution,
+    message = request.args.get('message')
+    session_query = urllib.parse.urlencode({'institution': institution,
                                       'session': session})
     email = auth.student_email
     dayparts = models.Dayparts.FetchJson(institution, session)
@@ -125,20 +115,18 @@ class Schedule(webapp2.RequestHandler):
       schedule = schedule[1:]
 
     config = models.Config.Fetch(institution, session)
-
-    template_values = {
-      'user_email' : auth.email,
-      'institution' : institution,
-      'session' : session,
-      'message': message,
-      'session_query': session_query,
-      'student': auth.student_entity,
-      #'dayparts': dayparts,
-      'classes_by_daypart': classes_by_daypart,
-      'dayparts_ordered': dayparts_ordered,
-      'schedule': json.dumps(schedule),
-      'classes_by_id': classes_by_id,
-      'html_desc': config['htmlDesc'],
-    }
-    template = JINJA_ENVIRONMENT.get_template('schedule.html')
-    self.response.write(template.render(template_values))
+    return render_template("schedule.html", 
+      uid=auth.uid,
+      institution=institution,
+      session=session,
+      message=message,
+      session_query=session_query,
+      student=auth.student_entity,
+      #dayparts=dayparts,
+      classes_by_daypart=classes_by_daypart,
+      dayparts_ordered=dayparts_ordered,
+      schedule=current_app.json.dumps(schedule),
+      classes_by_id=classes_by_id,
+      html_desc=config['htmlDesc'],
+      impersonation=f"&student={auth.student_email}" if auth.email!=auth.student_email else ""
+    )

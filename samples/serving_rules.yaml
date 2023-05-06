@@ -1,0 +1,10 @@
+# Sample data. Lines with leading # signs are comments.
+# Change the data below.
+- name: materials
+  allow:
+    - current_grade: 8
+    - current_grade: 7
+    - current_grade: 6
+- name: schedule
+  allow:
+    - current_homeroom: 25

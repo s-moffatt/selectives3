@@ -1,25 +1,16 @@
-import jinja2
-import logging
-import os
-import urllib
-import webapp2
-import yaml
+from flask import render_template, redirect, request, current_app, abort
+from flask.views import MethodView
+import urllib.parse
 import random
 
 import authorizer
 import models
 import logic
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
-
-
-class Scheduler(webapp2.RequestHandler):
+class Scheduler(MethodView):
 
   def RedirectToSelf(self, institution, session, message):
-    self.redirect("/scheduler?%s" % urllib.urlencode(
+    return redirect("/scheduler?%s" % urllib.parse.urlencode(
         {'message': message, 
          'institution': institution,
          'session': session}))
@@ -41,8 +32,8 @@ class Scheduler(webapp2.RequestHandler):
       eligible_class_ids = logic.EligibleClassIdsForStudent(
           institution, session, student, classes)
       eligible_class_ids = set(eligible_class_ids)
-      want = random.sample(eligible_class_ids, random.randint(1,5))
-      dontwant = random.sample(eligible_class_ids.difference(want), random.randint(1,5))
+      want = random.sample(eligible_class_ids, min(len(eligible_class_ids),random.randint(1,5)))
+      dontwant = random.sample(eligible_class_ids.difference(want), min(len(eligible_class_ids.difference(want)),random.randint(1,5)))
       # want = [str(item) for item in want]
       # dontwant = [str(item) for item in dontwant]
       models.Preferences.Store(email, institution, session,
@@ -63,52 +54,50 @@ class Scheduler(webapp2.RequestHandler):
                                no_student_emails)
 
   def post(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.CanAdministerInstitutionFromUrl():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
-    action = self.request.get("action")
+      current_app.logger.critical("no session")
+
+    action = request.form.get("action")
     if action == "Clear Prefs":
       self.ClearPrefs(institution, session)
     if action == "Random Prefs":
       self.RandomPrefs(institution, session)
     if action == "Clear Schedules":
       self.ClearAllSchedules(institution, session)
-    self.RedirectToSelf(institution, session, "saved classes")
+    return self.RedirectToSelf(institution, session, "saved classes")
 
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.CanAdministerInstitutionFromUrl():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
+      current_app.logger.critical("no session")
 
-    message = self.request.get('message')
-    session_query = urllib.urlencode({'institution': institution,
-                                      'session': session})
+    message = request.args.get('message')
+    session_query = urllib.parse.urlencode({'institution': institution,
+                                            'session': session})
 
     num_students = len(models.Students.FetchJson(institution, session))
-    template_values = {
-      'user_email' : auth.email,
-      'institution' : institution,
-      'session' : session,
-      'message': message,
-      'session_query': session_query,
-      'self': self.request.uri,
-      'num_students': num_students,
-    }
-    template = JINJA_ENVIRONMENT.get_template('scheduler.html')
-    self.response.write(template.render(template_values))
+
+    return render_template('scheduler.html',
+      uid=auth.uid,
+      institution=institution,
+      session=session,
+      message=message,
+      session_query=session_query,
+      self=request.url,
+      num_students=num_students,
+    )

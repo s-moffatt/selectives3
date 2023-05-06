@@ -1,43 +1,31 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
-import yaml
+from flask import request, render_template
+from flask.views import MethodView
+
 import models
 import authorizer
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
-
-
-class Verification(webapp2.RequestHandler):
+class Verification(MethodView):
 
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.HasStudentAccess():
-      auth.Redirect()
-      return
+        return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
+      current_app.logger.critical("no session")
 
     student_info = auth.GetStudentInfo(institution, session)
     if student_info == None:
-      student_info = {'name': 'No Data', 'current_grade': 'No Data'}
+      student_info = {'first': 'No Data', 'last': '', 'current_grade': 'No Data'}
 
-    template_values = {
-      'user_email' : auth.email,
-      'institution' : institution,
-      'session' : session,
-      'student_name': student_info['name'],
-      'current_grade': student_info['current_grade'],
-    }
-    template = JINJA_ENVIRONMENT.get_template('verification.html')
-    self.response.write(template.render(template_values))
+    return render_template('verification.html', 
+      uid=auth.uid,
+      institution=institution,
+      session=session,
+      student_name=student_info.get('first','')+" "+student_info.get('last',''),
+      current_grade=student_info['current_grade'],
+    )

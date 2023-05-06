@@ -1,0 +1,10 @@
+{% extends 'menu_student.html' %}
+{% block session_body %}
+
+<div>
+{{ welcome_msg|safe }}
+<input type=hidden name="institution" value="{{ institution }}" />
+<input type=hidden name="session" value="{{ session }}" />
+</div>
+
+{% endblock %}

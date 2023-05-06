@@ -1,0 +1,46 @@
+{% extends 'base_user.html' %}
+{% block body %}
+
+<div id="main-teacher">
+  <div id="menu-teacher">
+    <h3>Attendance</h3>
+    <ul>
+      <li>
+        <a href="/teacher/take_attendance?{{ session_query }}">Take Attendance</a>
+      </li>
+      <li>
+        <a href="/teacher/view_attendance?{{ session_query }}">View Attendance</a>
+      </li>
+      <li>
+        <a href="/teacher/view_by_homeroom?{{ session_query }}">View By Homeroom</a>
+      </li>
+    </ul>
+    <h3>Reports</h3>
+    <ul>
+      <li>
+        <a href="/report/student_emails?{{ session_query }}">Student Emails</a>
+      </li>
+      <li>
+        <a href="/teacher/courses?{{ session_query }}">Registration Status</a>
+      </li>
+      <li>
+        <a href="/error_registration?{{ session_query }}">Show Errors</a>
+      </li>
+      <li>
+        <a href="/report/attendance_list?{{ session_query }}">Attendance Sheets</a>
+      </li>
+      <li>
+        <a href="/report/student_schedules?{{ session_query }}">Student Schedules</a>
+      </li>
+      <li>
+        <a href="/report/student_schedules_marked?{{ session_query }}">Student Schedules Boxed</a>
+      </li>
+      <li><a href="/report/label?{{ session_query }}">Attendance Labels</a></li>
+    </ul>
+  </div>
+  <div id="view-teacher">
+  {% block session_body %} {% endblock %}
+  </div>
+</div>
+
+{% endblock body %}

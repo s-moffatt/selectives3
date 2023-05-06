@@ -1,0 +1,7 @@
+# Sample data. Lines with leading # signs are comments.
+# Change the data below.
+- group_name: TakenBoxing
+  emails:
+    - zmeyd@gmail.com
+    - vmeyd@gmail.com
+    - tmeyd@gmail.com
