@@ -1,22 +1,15 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
+from flask import render_template, redirect, request, current_app
+from flask.views import MethodView
+import urllib.parse
 
 import models
 import authorizer
-
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
 
 ALL_GRADES = 100
 
 def orderScheduleByDP(sched_obj, classes_by_id):
   schedule_by_dp = {}
-  sched_list = sched_obj.class_ids.split(',')
+  sched_list = sched_obj.get("class_ids").split(',')
   for cId in sched_list:
     c = classes_by_id[int(cId)]
     for dp in c['schedule']:
@@ -41,7 +34,7 @@ def getErrorMsgs(schedule_by_dp, len_dayparts, institution, session):
 def getFitnessErrorMsgs(schedule_by_dp):
   num_PE = num_Dance = num_fitness = num_PE_MT = num_PE_TF = 0
   err_msgs = []
-  for dp_key, dp_obj in schedule_by_dp.iteritems():
+  for dp_key, dp_obj in schedule_by_dp.items():
     if (dp_obj['name'] == 'PE'):
       num_PE += 1
       if (dp_key.startswith('Mon') or
@@ -66,13 +59,11 @@ def getFitnessErrorMsgs(schedule_by_dp):
     err_msgs.append("Not allowed to have two PE's on Mon/Tues or Thurs/Fri.")
   return err_msgs
 
-class ErrorRegistration(webapp2.RequestHandler):
+class ErrorRegistration(MethodView):
   def get(self):
-    auth = authorizer.Authorizer(self)
-    if not (auth.CanAdministerInstitutionFromUrl() or
-            auth.HasTeacherAccess()):
-      auth.Redirect()
-      return
+    auth = authorizer.Authorizer()
+    if not auth.CanAdministerInstitutionFromUrl():
+      return auth.Redirect()
 
     user_type = 'None'
     if auth.CanAdministerInstitutionFromUrl():
@@ -80,14 +71,15 @@ class ErrorRegistration(webapp2.RequestHandler):
     elif auth.HasTeacherAccess():
       user_type = 'Teacher'
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
-    message = self.request.get('message')
-    session_query = urllib.urlencode({'institution': institution,
+      current_app.logger.critical("no session")
+
+    message = request.args.get('message')
+    session_query = urllib.parse.urlencode({'institution': institution,
                                       'session': session})
 
     err_list = [] # list of tuples where
@@ -95,7 +87,7 @@ class ErrorRegistration(webapp2.RequestHandler):
                   #   second element is the student object
                   #   third element is the student schedule object by daypart
 
-    grade_level = self.request.get("grade_level")
+    grade_level = request.args.get("grade_level")
     if grade_level:
       grade_level = int(grade_level)
       len_dayparts = len(models.Dayparts.FetchJson(institution, session))
@@ -106,13 +98,14 @@ class ErrorRegistration(webapp2.RequestHandler):
         classes_by_id[c['id']] = c
 
       students = models.Students.FetchJson(institution, session)
-      students.sort(key=lambda(s): s['current_homeroom'])
+      students.sort(key=lambda s: s['current_homeroom'])
       for s in students:
         if (grade_level != ALL_GRADES) and (s['current_grade'] != grade_level):
           continue
         sched_obj = models.Schedule.FetchEntity(institution, session,
                                               s['email'].lower())
-        if not(sched_obj and sched_obj.class_ids):
+        current_app.logger.info(f"sched_obj=%s" % sched_obj.get("class_ids"))
+        if not sched_obj or not sched_obj.get("class_ids"):
           err_list.append((['Missing schedule'], s, {}))
           continue # Entire schedule is missing,
                    # don't bother checking for further errors
@@ -122,14 +115,12 @@ class ErrorRegistration(webapp2.RequestHandler):
           err_list.append((err_msgs, s, schedule_by_dp))
     # else no button was clicked, don't do anything
 
-    template_values = {
-      'user_email' : auth.email,
-      'user_type' : user_type,
-      'institution' : institution,
-      'session' : session,
-      'message': message,
-      'err_list': err_list,
-      'session_query': session_query,
-    }
-    template = JINJA_ENVIRONMENT.get_template('error_registration.html')
-    self.response.write(template.render(template_values))
+    return render_template("error_registration.html", 
+      uid=auth.uid,
+      user_type=user_type,
+      institution=institution,
+      session=session,
+      message=message,
+      err_list=err_list,
+      session_query=session_query,
+    )

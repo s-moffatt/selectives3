@@ -1,6 +1,6 @@
 import yayv
 
-def Dayparts():
+def Dayparts(*args):
   return yayv.ByExample(
         "- name: UNIQUE\n"
         "  row: REQUIRED\n"

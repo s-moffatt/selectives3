@@ -1,0 +1,28 @@
+# Sample data. Lines with leading # signs are comments.
+# Change the data below.
+- name: Mon A
+  row: 1
+  col: 1
+  rowspan: 1
+  colspan: 1
+- name: Tues A
+  row: 1
+  col: 2
+- name: Thurs A
+  row: 1
+  col: 3
+- name: Fri A
+  row: 1
+  col: 4
+- name: Mon B
+  row: 2
+  col: 1
+- name: Tues B
+  row: 2
+  col: 2
+- name: Thurs B
+  row: 2
+  col: 3
+- name: Fri B
+  row: 2
+  col: 4

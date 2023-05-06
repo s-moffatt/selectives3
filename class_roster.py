@@ -1,20 +1,11 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
-import yaml
-import itertools
-import random
+from flask import render_template, redirect, request, current_app, abort
+from flask.views import MethodView
+import urllib.parse
+import csv
+import logic
 
 import models
 import authorizer
-import logic
-
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
 
 def addStudentData(class_roster, students):
   class_roster['students'] = []
@@ -23,71 +14,69 @@ def addStudentData(class_roster, students):
       if (s['email'].lower() == e):
         class_roster['students'].append(s)
 
-class ClassRoster(webapp2.RequestHandler):
+class ClassRoster(MethodView):
 
   def RedirectToSelf(self, institution, session, class_id, message):
-    self.redirect("/class_roster?%s" % urllib.urlencode(
+    return redirect("/class_roster?%s" % urllib.parse.urlencode(
         {'message': message,
          'institution': institution,
          'session': session,
          'class_id': class_id}))
 
   def post(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.CanAdministerInstitutionFromUrl():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
-    class_id = self.request.get("class_id")
+      current_app.logger.critical("no session")
+    class_id = request.args.get("class_id")
     if not class_id:
-      logging.fatal("no class_id")
-    action = self.request.get("action")
+      current_app.logger.critical("no class_id")
+    action = request.form.get("action")
     if not action:
-      logging.fatal("no action")
+      current_app.logger.critical("no action")
 
     if action == "remove student":
-      email = self.request.get("email")
+      email = request.form.get("email")
       logic.RemoveStudentFromClass(institution, session, email, class_id)
-      self.RedirectToSelf(institution, session, class_id, "removed %s" % email)
+      return self.RedirectToSelf(institution, session, class_id, "removed %s" % email)
 
     if action == "run lottery":
-      cid = self.request.get("cid")
+      cid = request.form.get("cid")
       if not cid:
-        logging.fatal("no class id")
-      candidates = self.request.get("candidates")
+        current_app.logger.critical("no class id")
+      candidates = request.form.get("candidates")
       if candidates == "":
         candidates = []
       else:
         candidates = candidates.split(",")
       logic.RunLottery(institution, session, cid, candidates)
-      self.RedirectToSelf(institution, session, cid, "lottery %s" % cid)
+      return self.RedirectToSelf(institution, session, cid, "lottery %s" % cid)
 
     self.RedirectToSelf(institution, session, class_id, "Unknown action")
 
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.CanAdministerInstitutionFromUrl():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
-    class_id = self.request.get("class_id")
-    if not session:
-      logging.fatal("no class id")
+      current_app.logger.critical("no session")
+    class_id = request.args.get("class_id")
+    if not class_id:
+      current_app.logger.critical("no class_id")
 
-    message = self.request.get('message')
-    session_query = urllib.urlencode({'institution': institution,
+    message = request.args.get('message')
+    session_query = urllib.parse.urlencode({'institution': institution,
                                       'session': session})
 
     class_roster = models.ClassRoster.FetchEntity(institution, session, class_id)
@@ -100,15 +89,13 @@ class ClassRoster(webapp2.RequestHandler):
       if (str(c['id']) == class_id):
         class_details = c
         break
-    template_values = {
-      'user_email' : auth.email,
-      'institution' : institution,
-      'session' : session,
-      'message': message,
-      'session_query': session_query,
-      'class_roster': class_roster,
-      'students': students,
-      'class_details': class_details
-    }
-    template = JINJA_ENVIRONMENT.get_template('class_roster.html')
-    self.response.write(template.render(template_values))
+    return render_template('class_roster.html', 
+      uid=auth.uid,
+      institution=institution,
+      session=session,
+      message=message,
+      session_query=session_query,
+      class_roster=class_roster,
+      students=students,
+      class_details=class_details
+    )

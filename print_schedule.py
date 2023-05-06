@@ -1,19 +1,11 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
-import yaml
+from flask import render_template, redirect, request, current_app
+from flask.views import MethodView
+import urllib.parse
 
 import models
 import authorizer
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
-
-class PrintSchedule(webapp2.RequestHandler):
+class PrintSchedule(MethodView):
   def SortByName(self, classes):
     return sorted(classes, key=lambda e: e['name'])
 
@@ -21,19 +13,18 @@ class PrintSchedule(webapp2.RequestHandler):
     return [c for c in classes if 'Core' in c['name']]
 
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.HasStudentAccess():
-      auth.Redirect()
-      return
-
-    institution = self.request.get("institution")
+      return auth.Redirect()
+      
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
-    message = self.request.get('message')
-    session_query = urllib.urlencode({'institution': institution,
+      current_app.logger.critical("no session")
+    message = request.args.get('message')
+    session_query = urllib.parse.urlencode({'institution': institution,
                                       'session': session})
     email = auth.student_email
     dayparts = models.Dayparts.FetchJson(institution, session)
@@ -75,17 +66,15 @@ class PrintSchedule(webapp2.RequestHandler):
           if daypart in schedule_by_daypart:
             schedule_by_daypart[daypart] = c
 
-    template_values = {
-      'user_email' : auth.email,
-      'institution' : institution,
-      'session' : session,
-      'message': message,
-      'session_query': session_query,
-      'student': auth.student_entity,
-      'dayparts': dayparts,
-      'schedule_by_daypart': schedule_by_daypart,
-      'dayparts_ordered': dayparts_ordered,
-    }
-    template = JINJA_ENVIRONMENT.get_template('print_schedule.html')
-    self.response.write(template.render(template_values))
+    return render_template("print_schedule.html",
+      uid=auth.uid,
+      institution=institution,
+      session=session,
+      message=message,
+      session_query=session_query,
+      student=auth.student_entity,
+      dayparts=dayparts,
+      schedule_by_daypart=schedule_by_daypart,
+      dayparts_ordered=dayparts_ordered,
+    )
   

@@ -1,48 +1,38 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
-
+from flask import render_template, redirect, request, current_app
+from flask.views import MethodView
+import urllib.parse
 import models
 import authorizer
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
 
 
-class Preregistration(webapp2.RequestHandler):
+class Preregistration(MethodView):
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.HasStudentAccess():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
+      current_app.logger.critical("no session")
     if not auth.HasPageAccess(institution, session, "materials"):
-      auth.RedirectTemporary(institution, session)
-      return
+      return auth.RedirectTemporary(institution, session)
 
-    message = self.request.get('message')
-    session_query = urllib.urlencode({'institution': institution,
+    message = request.args.get('message')
+    session_query = urllib.parse.urlencode({'institution': institution,
                                       'session': session})
     welcome_msg = models.Materials.Fetch(institution, session)
 
-    template_values = {
-      'user_email' : auth.email,
-      'institution' : institution,
-      'session' : session,
-      'message': message,
-      'session_query': session_query,
-      'self': self.request.uri,
-      'welcome_msg' : welcome_msg,
-    }
-    template = JINJA_ENVIRONMENT.get_template('preregistration.html')
-    self.response.write(template.render(template_values))
+    return render_template("preregistration.html", 
+      uid=auth.uid,
+      institution=institution,
+      session=session,
+      message=message,
+      session_query=session_query,
+      self=request.url,
+      welcome_msg=welcome_msg,
+      impersonation=f"&student={auth.student_email}" if auth.email!=auth.student_email else ""
+    )

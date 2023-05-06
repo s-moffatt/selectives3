@@ -20,12 +20,12 @@ class ByExample(object):
 
   def __init__(self, schema):
     """The schema is basically an example of valid input."""
-    self.schema = yaml.load(schema)
+    self.schema = yaml.safe_load(schema)
 
   def Update(self, yaml_str):
     if not self.IsValid(yaml_str):
       return "%s\n%s" % (self.ErrorMessage(), yaml_str)
-    yaml_obj = yaml.load(yaml_str)
+    yaml_obj = yaml.safe_load(yaml_str)
     self.AddCounters(self.schema, yaml_obj)
     return yaml.dump(yaml_obj, default_flow_style=False)
 
@@ -58,9 +58,9 @@ class ByExample(object):
     self.counter_values = {}
     self.error_message = []
     # only call yaml.load() if yaml is a string
-    if isinstance(yaml_in, basestring):
+    if isinstance(yaml_in, str):
       try:
-        yaml_in = yaml.load(yaml_in)
+        yaml_in = yaml.safe_load(yaml_in)
       except:
         self._AddError("ROOT", traceback.format_exc())
         return False

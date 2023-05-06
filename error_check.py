@@ -1,11 +1,6 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
-import yaml
-import itertools
-import random
+from flask import render_template, redirect, request, current_app
+from flask.views import MethodView
+import urllib.parse
 
 import models
 import authorizer
@@ -14,64 +9,53 @@ import error_check_logic
 import yayv
 import schemas
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
-
-
-class ErrorCheck(webapp2.RequestHandler):
-
-  def RedirectToSelf(self, institution, session, message):
-    self.redirect("/error_check?%s" % urllib.urlencode(
+class ErrorCheck(MethodView):
+  def RedirectToSelf(cls, institution, session, message):
+    return redirect('/error_check?%s' % urllib.parse.urlencode(
         {'message': message, 
          'institution': institution,
          'session': session}))
 
-  def post(self):
-    auth = authorizer.Authorizer(self)
+  def post(cls):
+    auth = authorizer.Authorizer()
     if not auth.CanAdministerInstitutionFromUrl():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
+      current_app.logger.critical("no session")
 
     checker = error_check_logic.Checker(institution, session)
     checker.RunUpgradeScript()
-    self.RedirectToSelf(institution, session, "upgrade")
+    return cls.RedirectToSelf(institution, session, "upgrade")
 
-  def get(self):
-    auth = authorizer.Authorizer(self)
+  def get(cls):
+    auth = authorizer.Authorizer()
     if not auth.CanAdministerInstitutionFromUrl():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
+      current_app.logger.critical("no session")
 
-    message = self.request.get('message')
-    session_query = urllib.urlencode({'institution': institution,
+    message = request.args.get('message')
+    session_query = urllib.parse.urlencode({'institution': institution,
                                       'session': session})
     checker = error_check_logic.Checker(institution, session)
     setup_status, error_chk_detail = checker.ValidateSetup()
 
-    template_values = {
-      'user_email' : auth.email,
-      'institution' : institution,
-      'session' : session,
-      'message': message,
-      'setup_status': setup_status,
-      'error_chk_detail': error_chk_detail,
-      'session_query': session_query,
-    }
-    template = JINJA_ENVIRONMENT.get_template('error_check.html')
-    self.response.write(template.render(template_values))
+    return render_template("error_check.html", 
+      uid=auth.uid,
+      institution=institution,
+      session=session,
+      message=message,
+      setup_status=setup_status,
+      error_chk_detail=error_chk_detail,
+      session_query=session_query,
+    )

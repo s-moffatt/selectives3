@@ -1,38 +1,28 @@
-import os
-import urllib
-import jinja2
-import webapp2
-import logging
-import json
-
+from flask import render_template, redirect, request, current_app
+from flask.views import MethodView
+import urllib.parse
 import models
 import authorizer
 import logic
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
 
-class Postregistration(webapp2.RequestHandler):
+class Postregistration(MethodView):
   def get(self):
-    auth = authorizer.Authorizer(self)
+    auth = authorizer.Authorizer()
     if not auth.HasStudentAccess():
-      auth.Redirect()
-      return
+      return auth.Redirect()
 
-    institution = self.request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
-      logging.fatal("no institution")
-    session = self.request.get("session")
+      current_app.logger.critical("no institution")
+    session = request.args.get("session")
     if not session:
-      logging.fatal("no session")
+      current_app.logger.critical("no session")
     if not auth.HasPageAccess(institution, session, "final"):
-      auth.RedirectTemporary(institution, session)
-      return
+      return auth.RedirectTemporary(institution, session)
 
-    message = self.request.get('message')
-    session_query = urllib.urlencode({'institution': institution,
+    message = request.args.get('message')
+    session_query = urllib.parse.urlencode({'institution': institution,
                                       'session': session})
     email = auth.student_email
     dayparts = models.Dayparts.FetchJson(institution, session)
@@ -79,18 +69,17 @@ class Postregistration(webapp2.RequestHandler):
 
     config = models.Config.Fetch(institution, session)
 
-    template_values = {
-      'user_email' : auth.email,
-      'institution' : institution,
-      'session' : session,
-      'message': message,
-      'session_query': session_query,
-      'student': auth.student_entity,
-      'dayparts': dayparts,
-      'schedule_by_daypart': schedule_by_daypart,
-      'dayparts_ordered': dayparts_ordered,
-      'classes_by_id': classes_by_id,
-      'html_desc': config['htmlDesc'],
-    }
-    template = JINJA_ENVIRONMENT.get_template('postregistration.html')
-    self.response.write(template.render(template_values))
+    return render_template("postregistration.html", 
+      uid=auth.uid,
+      institution=institution,
+      session=session,
+      message=message,
+      session_query=session_query,
+      student=auth.student_entity,
+      dayparts=dayparts,
+      schedule_by_daypart=schedule_by_daypart,
+      dayparts_ordered=dayparts_ordered,
+      classes_by_id=classes_by_id,
+      html_desc=config['htmlDesc'],
+      impersonation=f"&student={auth.student_email}" if auth.email!=auth.student_email else ""
+    )
