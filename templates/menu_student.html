@@ -21,7 +21,11 @@ window.onload = function() {
   if (active != null) {
     active.classList.add('menu-user-active');
   } else {
-    console.log("menu_student.html pathname error");
+    if (window.location.pathname == '/coming_soon') {
+      //console.log("coming_soon");
+    } else {
+      console.log("menu_student.html pathname error");
+    }
   }
 };
 </script>

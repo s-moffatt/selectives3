@@ -2,7 +2,7 @@
 {% block session_body %}
 
 <h3>Class List</h3>
-{% if jdata %}
+{% if data.classes %}
 <form method=post>
 <input type=hidden name="institution" value="{{ institution }}" />
 <input type=hidden name="session" value="{{ session }}" />
@@ -18,7 +18,7 @@
     <th>Actual</th>
     <th>Waitlist</th>
   </tr>
-  {% for c in jdata %}
+  {% for c in data.classes %}
     <tr class=highlight>
       <td><a href="/class_roster?{{ session_query }}&class_id={{ c['id'] }}">roster</a></td>
       <td><a href="/class_waitlist?{{ session_query }}&class_id={{ c['id'] }}">waitlist</a></td>

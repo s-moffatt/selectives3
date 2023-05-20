@@ -1,6 +1,6 @@
-{% if user_type == 'Admin' %}
+{% if data.user_type == 'Admin' %}
   {% extends 'menu.html' %}
-{% elif user_type == 'Teacher' %}
+{% elif data.user_type == 'Teacher' %}
   {% extends 'menu_teacher.html' %}
 {% endif %}
 {% block session_body %}
@@ -56,7 +56,7 @@ Click to show student schedule errors for all or by grade.<br><br>
 <input type="button" id="show6th" value="Show 6th">
 <div id="displayArea">
 <br>
-  {% for err_obj in err_list %}
+  {% for err_obj in data.err_list %}
     <table style="border-collapse:collapse; table-layout:fixed; width:80%">
     <th style="text-align: left">
     {{err_obj[1]['first']}}
@@ -97,11 +97,11 @@ Click to show student schedule errors for all or by grade.<br><br>
     {% endif %}
   {% endfor %}
 </div>
-{% if err_list|length > 0 %}
+{% if data.err_list|length > 0 %}
 <br>Copy and paste the following into Serving Rules to grant these students access to their Schedule page.<br>
 <textarea>
 - name: schedule
-  allow:{% for err_obj in err_list %}
+  allow:{% for err_obj in data.err_list %}
   - email: {{err_obj[1]['email']}}{% endfor %}
 </textarea>
 {% endif %}

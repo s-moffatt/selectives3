@@ -36,33 +36,36 @@
             logbtn.onclick = logout;
             logbtn.innerHTML = "Sign out";
             var uid = await user.uid;
-            if (!document.getElementById("block_body").firstElementChild || uid != document.getElementById("block_body").firstElementChild.getAttribute('uid')) {
+            if (!document.getElementById("body-user").firstElementChild || uid != document.getElementById("body-user").firstElementChild.getAttribute('uid')) {
               var idToken = await user.getIdToken();
               // get authenticated contents
-              var rsp = await fetch(window.location.href, {
+              var rsp = await fetch("/", {
                       method: "GET",
                       headers: {Authorization: idToken}
               })
               var redirect = await rsp.headers.get('selectives-redirect');
-              //console.log("authenticated: redirect="+redirect);
+              console.log("authenticated: redirect="+redirect);
               if(redirect) {
                 window.location.href=redirect
               } else {
                 var html = await rsp.text();
                 var doc = new DOMParser().parseFromString(html,'text/html');
-                document.getElementById("block_body").innerHTML=doc.getElementById('block_body').innerHTML;
+                document.getElementById("body-user").innerHTML=doc.getElementById('body-user').innerHTML;
+                document.getElementById("who").innerHTML = email;
+                document.getElementById("logbtn").onclick = logout;
+                document.getElementById("logbtn").innerHTML = "Sign out";
               }
             }
             document.body.style.display="block"
           } else { 
             var redirect;
-            if (document.getElementById("block_body").firstElementChild.getAttribute('uid')!="None") {
+            if (document.getElementById("body-user").firstElementChild.getAttribute('uid')!="None") {
               var rsp = await fetch('/sessionSignout', {
                       method: "POST"
               })
               redirect = await rsp.headers.get('selectives-redirect');
             } else {
-              redirect = document.getElementById("block_body").firstElementChild.getAttribute('redirect');
+              redirect = document.getElementById("body-user").firstElementChild.getAttribute('redirect');
             }
             //console.log("NOT authenticated: redirect="+redirect);
             if(redirect) {
@@ -72,7 +75,11 @@
               admin.style.display = "none";
               logbtn.onclick = login;
               logbtn.innerHTML = "Sign in";
-              document.getElementById("block_body").innerHTML="";
+              if(document.getElementById("welcome-user")){
+                //console.log("welcome-user")
+              } else {
+                document.getElementById("body-user").innerHTML="";
+              }
             }
           }
       });

@@ -29,19 +29,19 @@ Select a Session and Class to display a list of students who have taken the clas
 <label for="session-dropdown">Session</label><br>
 <select id="session-dropdown" name="session-dd">
   <option value="None">None</option>
-  {% for s in session_list %}
-    <option value="{{ s['name'] }}"
-      {% if s['name'] == selected_session %}selected{% endif %}>
-      {{ s['name'] }}
+  {% for s in data.session_list %}
+    <option value="{{ s }}"
+      {% if s == data.selected_session %}selected{% endif %}>
+      {{ s }}
     </option>
   {% endfor %}
 </select><br><br>
 <label for="class-dropdown">Class</label><br>
 <select id="class-dropdown" name="class-dd">
   <option value="None">None</option>
-  {% for c in class_list %}
+  {% for c in data.class_list %}
     <option value={{ c['id'] }}
-      {% if c['id'] == selected_class|int() %}selected{% endif %}>
+      {% if c['id'] == data.selected_class|int() %}selected{% endif %}>
       {{ c['name'] }}
       {% for s in c['schedule'] %}
         {{ s['daypart'] }}
@@ -52,9 +52,9 @@ Select a Session and Class to display a list of students who have taken the clas
 </select><br><br>
 Taken<br>
 <textarea disabled="true">
-- emails:{% for e in taken['emails'] %}
+- emails:{% for e in data.taken['emails'] %}
   - {{e}}{% endfor %}
-  group_name: Taken_{{taken['class_name']}}_{{taken['class_id']}}
+  group_name: Taken_{{data.taken['class_name']}}_{{data.taken['class_id']}}
 </textarea>
 </form>
 {% endblock %}

@@ -1,14 +1,26 @@
-from flask import render_template, redirect, request, current_app, abort
+from flask import render_template, redirect, request, current_app, jsonify, abort, g as app_ctx
 from flask.views import MethodView
 import urllib.parse
 import csv
 from io import StringIO
+import random
 
 import schemas
 import error_check_logic
 import logic
 import models
 import authorizer
+
+def get_param(k,*args):
+  v = request.args.get(k) or request.form.get(k)
+  if not v:
+    if len(args)<=0:
+      current_app.logger.critical(f"no {k}")
+    else:
+      default = args[0]
+      current_app.logger.info(f"no {k}, using default={default}")
+      v = default
+  return v
 
 def getStudentInfo(student_dict, email):
   if email in student_dict:
@@ -51,6 +63,11 @@ def getStudentEmail(student_dict, line):
   else:
     return ''
 
+def alphaOrder(c):
+  return (c['name'],
+          c['dayorder'],
+          c['instructor'])
+
 def listOrder(c):
   if 'instructor' in c:
     return (c['name'],
@@ -60,12 +77,109 @@ def listOrder(c):
     return (c['name'],
             c['dayorder'])
 
+def buildRoster(c, roster, attendance, students):
+  r = {}
+  r['name'] = c['name']
+  if 'instructor' in c:
+    r['instructor'] = c['instructor']
+  r['daypart'] = "/".join([str(dp['daypart'])
+                           for dp in c['schedule']])
+  r['location'] = "/".join([str(dp['location'])
+                            for dp in c['schedule']])
+  r['emails'] = roster['emails']
+  student_list = [students[email] for email in roster['emails']]
+  student_list.sort(key=(lambda s: s['last']))
+  r['students'] = student_list
+  if attendance:
+    r['submitted_by'] = attendance['submitted_by']
+    # for students not found (withdrawn from school), set last = '_None'
+    r['present'] = [students[email] if email in students\
+                    else {'email': email, 'last': '_None'}\
+                    for email in attendance['present'] ]
+    r['present'].sort(key=(lambda s: s['last']))
+    r['absent'] = [students[email] if email in students\
+                   else {'email': email, 'last': '_None'}\
+                   for email in attendance['absent']]
+    r['absent'].sort(key=(lambda s: s['last']))
+    r['submitted_date'] = attendance['submitted_date']
+    if 'note' in attendance:
+      r['note'] = attendance['note']
+    else:
+      r['note'] = ''
+  return r
+
+def buildClasses(auth, dayparts, classes, my_classes, other_classes):
+  dp_dict = {}
+  for dp in dayparts:
+    dp_dict[dp['name']] = str(dp['col'])+str(dp['row'])
+  for c in classes:
+    c['dayorder'] = dp_dict[c['schedule'][0]['daypart']]
+    c['daypart'] = "/".join([str(dp['daypart'])
+                             for dp in c['schedule']])
+    if 'instructor' not in c:
+      c['instructor'] = 'none'
+    hasOwner = False
+    if 'owners' in c:
+      for owner in c['owners']:
+        if auth.teacher_email and owner == auth.teacher_email:
+          hasOwner = True
+          my_classes.append(c)
+    if not hasOwner:
+      other_classes.append(c)
+  my_classes.sort(key=alphaOrder)
+  other_classes.sort(key=alphaOrder)
+
+def addStudentData(class_roster, students):
+  class_roster['students'] = []
+  for e in class_roster['emails']:
+    for s in students:
+      if (s['email'].lower() == e.lower()):
+        class_roster['students'].append(s)
+
+def ClearPrefs(institution, session):
+  students = models.Students.FetchJson(institution, session)
+  classes = models.Classes.FetchJson(institution, session)
+  for student in students:
+    email = student['email']
+    #TODO find the list of eligible classes for each student
+    models.Preferences.Store(email, institution, session,
+                             [], [], [])
+
+def RandomPrefs(institution, session):
+  students = models.Students.FetchJson(institution, session)
+  classes = models.Classes.FetchJson(institution, session)
+  for student in students:
+    email = student['email']
+    eligible_class_ids = logic.EligibleClassIdsForStudent(
+        institution, session, student, classes)
+    eligible_class_ids = set(eligible_class_ids)
+    want = random.sample(eligible_class_ids, min(len(eligible_class_ids),random.randint(1,5)))
+    dontwant = random.sample(eligible_class_ids.difference(want), min(len(eligible_class_ids.difference(want)),random.randint(1,5)))
+    # want = [str(item) for item in want]
+    # dontwant = [str(item) for item in dontwant]
+    models.Preferences.Store(email, institution, session,
+                             want, [], dontwant)
+
+def ClearAllSchedules(institution, session):
+  students = models.Students.FetchJson(institution, session)
+  for student in students:
+    empty_class_ids = ''
+    models.Schedule.Store(institution, session,
+                          student['email'].lower(),
+                          empty_class_ids)
+  classes = models.Classes.FetchJson(institution, session)
+  for class_obj in classes:
+    no_student_emails = ""
+    models.ClassRoster.Store(institution, session,
+                             class_obj,
+                             no_student_emails)
+
 @classmethod
-def getNone(cls, institution, session):
+def getNone(cls, institution, session, auth):
   return None
 
 @classmethod
-def WelcomeSetupSave(cls, institution, session):
+def WelcomeSetupSave(cls, institution, session, auth):
   data = request.form.get("data")
   if not data:
     current_app.logger.critical(f"no {cls.name} data")
@@ -74,7 +188,7 @@ def WelcomeSetupSave(cls, institution, session):
   return data
 
 @classmethod
-def RostersSave(cls, institution, session):
+def RostersSave(cls, institution, session, auth):
   rosters = request.form.get("data")
   if not rosters:
     current_app.logger.critical("no rosters")
@@ -140,7 +254,7 @@ def RostersSave(cls, institution, session):
                           ','.join(str(cid) for cid in student_put_sched[email_key]))
 
 @classmethod
-def RostersGetData(cls, institution, session):
+def RostersGetData(cls, institution, session, auth):
   rosters = ''
   classes = models.Classes.FetchJson(institution, session)
   students = models.Students.FetchJson(institution, session)
@@ -182,25 +296,7 @@ def RostersGetData(cls, institution, session):
   return rosters
 
 @classmethod
-def ClassListGetJdata(cls, institution, session):
-  classes = models.Classes.FetchJson(institution, session)
-  dayparts = models.Dayparts.FetchJson(institution, session)
-  dp_dict = {} # used for ordering by col then row
-  for dp in dayparts:
-    dp_dict[dp['name']] = str(dp['col'])+str(dp['row'])
-  for c in classes:
-    r = models.ClassRoster.FetchEntity(institution, session, c['id'])
-    c['num_enrolled'] = len(r['emails'])
-    w = models.ClassWaitlist.FetchEntity(institution, session, c['id'])
-    c['num_waitlist'] = len(w['emails'])
-    c['dayorder'] = dp_dict[c['schedule'][0]['daypart']]
-  if classes:
-    classes.sort(key=listOrder)
-  current_app.logger.info(f"classes={classes}")
-  return classes
-
-@classmethod
-def ConfigGetJdata(cls, institution, session):
+def ConfigGetJdata(cls, institution, session, auth):
   db_version = models.DBVersion.Fetch(institution, session)
   config = models.Config.Fetch(institution, session)
   return {
@@ -209,7 +305,7 @@ def ConfigGetJdata(cls, institution, session):
   }
 
 @classmethod
-def ConfigSave(cls, institution, session):
+def ConfigSave(cls, institution, session, auth):
   displayRoster = request.form.get("displayRoster")
   if not displayRoster:
     current_app.logger.critical("no displayRoster")
@@ -264,7 +360,7 @@ def AutoRegisterAfterSave(cls, institution, session, auto_register):
             current_app.logger.info(f"added {grp['email']} to {class_id}")
 
 @classmethod
-def AutoRegisterGetJdata(cls, institution, session):
+def AutoRegisterGetJdata(cls, institution, session, auth):
   auto_register = models.AutoRegister.FetchJson(institution, session)
   classes = models.Classes.FetchJson(institution, session)
   dayparts = models.Dayparts.FetchJson(institution, session)
@@ -282,7 +378,7 @@ def AutoRegisterGetJdata(cls, institution, session):
   grades_dict = {}
   for s in students:
     grade = s['current_grade']
-    grades_dict[str(grade)] = grades_dict.get(grade, 0) + 1
+    grades_dict[str(grade)] = grades_dict.get(str(grade), 0) + 1
     grades_dict['All'] = grades_dict.get('All', 0) + 1
   grades = []
   for g in sorted(grades_dict, reverse=True):
@@ -301,22 +397,397 @@ def AutoRegisterGetJdata(cls, institution, session):
     "groups": groups,
   }
 
+@classmethod
+def TakeAttendancePostAction(cls, institution, session, auth):
+  submitted_date = get_param("submitted_date")
+  c_id           = get_param("c_id")
+  present_kids   = get_param("present_kids", None)
+  absent_kids    = get_param("absent_kids" , None)
+  note           = get_param("note"        , None)
+  if present_kids:
+    present_kids = [e for e in present_kids.split(',')]
+  else:
+    present_kids = []
+  if absent_kids:
+    absent_kids = [e for e in absent_kids.split(',')]
+  else:
+    absent_kids = []
+  teachers = models.Teachers.FetchJson(institution, session)
+  teacher = logic.FindUser(auth.email, teachers)
+  if not teacher:
+    teacher = {}
+    teacher['first'] = ""
+    teacher['last'] = auth.email
+
+  attendance = models.Attendance.FetchJson(institution, session, c_id)
+  # Clobber existing data, or if none, create a new element
+  attendance[submitted_date] = {
+    "present": present_kids,
+    "absent": absent_kids,
+    "submitted_by": " ".join([teacher['first'], teacher['last']]),
+    "submitted_date": submitted_date,
+    "note": note,
+  }
+  models.Attendance.Store(institution, session, c_id, attendance)
+  return cls.RedirectToSelf(institution, session, f"saved {cls.name} data", url_args={
+    'selected_cid' : c_id,
+    'selected_date': submitted_date,   
+  })
+
+@classmethod
+def TakeAttendanceGetJdata(cls, institution, session, auth):
+  selected_cid  = get_param('selected_cid',0)
+  selected_date = get_param('selected_date',None)
+  session_query = urllib.parse.urlencode({'institution': institution,
+                                    'session': session,
+                                    'current_cid': selected_cid})
+
+  dayparts = models.Dayparts.FetchJson(institution, session)
+  classes = models.Classes.FetchJson(institution, session)
+  if not classes: classes = []
+  my_classes = []
+  other_classes = []
+  buildClasses(auth, dayparts, classes, my_classes, other_classes)
+
+  students = models.Students.FetchJson(institution, session)
+  # create a dictionary of students to avoid multiple loops in buildRoster
+  students_dict = {}
+  if not students: students = []
+  for s in students:
+    s['email'] = s['email'].lower()
+    students_dict[s['email']] = s
+
+  my_roster = {}
+  if selected_cid != 0 and selected_date:
+    selected_attendance = models.Attendance.FetchJson(institution, session,
+                                                      selected_cid)
+    current_app.logger.info(f"selected_attendance={selected_attendance}")
+    attendance = selected_attendance.get(selected_date, None)
+    #if selected_date in selected_attendance:
+    #  attendance = selected_attendance[selected_date]
+    #else:
+    #  attendance = None
+    current_app.logger.info(f"attendance={attendance}")  
+    selected_class = next(c for c in classes if c['id'] == int(selected_cid))
+    selected_roster = models.ClassRoster.FetchEntity(institution, session, selected_cid)
+    if not selected_roster:
+      selected_roster = {}
+
+    my_roster = buildRoster(selected_class, selected_roster,
+                            attendance,
+                            students_dict)
+  # my_classes and other_classes are lists of classes
+  # my_roster is a dictionary:
+  # {'name': 'Circuit Training',
+  #  'instructor': 'name',
+  #    ...,
+  #  'emails': [list of student emails],
+  #  'students': [list of student objects based on the emails]}
+  return {
+    'user_type' : 'Teacher' if auth.email==auth.teacher_email else 'Admin',
+    'current_cid': selected_cid,
+    'current_date': selected_date,
+    'session_query': session_query,
+    'my_classes': my_classes,
+    'my_roster': current_app.json.dumps(my_roster),
+    'other_classes': other_classes,
+  }
+
+@classmethod
+def ClassRosterPostAction(cls, institution, session, auth):
+  class_id = get_param("class_id")
+  action   = get_param("action")
+
+  if action == "remove student":
+    email = get_param("email")
+    logic.RemoveStudentFromClass(institution, session, email, class_id)
+    return cls.RedirectToSelf(institution, session, "removed %s" % email, url_args={
+      'class_id': class_id,
+    })
+
+  if action == "run lottery":
+    cid = get_param("cid")
+    app_ctx.class_id = cid
+
+    candidates = get_param("candidates","")
+    if candidates == "":
+      candidates = []
+    else:
+      candidates = candidates.split(",")
+    logic.RunLottery(institution, session, cid, candidates)
+    return cls.RedirectToSelf(institution, session, "lottery %s" % cid, url_args={
+      'class_id': cid,
+    })
+
+  return cls.RedirectToSelf(institution, session, "Unknown action", url_args={
+    'class_id': class_id,
+  })
+
+@classmethod
+def ClassRosterGetJdata(cls, institution, session, auth):
+  class_id = get_param("class_id")
+
+  class_roster = models.ClassRoster.FetchEntity(institution, session, class_id)
+  class_roster['emails'].sort()
+  students = models.Students.FetchJson(institution, session)
+  addStudentData(class_roster, students)
+  classes = models.Classes.FetchJson(institution, session)
+  class_details = ''
+  for c in classes:
+    if (str(c['id']) == class_id):
+      class_details = c
+      break
+  return {
+    'class_roster'    : class_roster,
+    'students'        : students,
+    'class_details'   : class_details
+  }
+
+@classmethod
+def ClassWaitlistPostAction(cls, institution, session, auth):
+  class_id = get_param("class_id")
+  app_ctx.class_id = class_id
+
+  action   = get_param("action")
+
+  if action == "remove student":
+    email = get_param("email")
+    logic.RemoveStudentFromWaitlist(institution, session, email, class_id)
+    return cls.RedirectToSelf(institution, session, "removed %s" % email, url_args={
+      'class_id': class_id,
+    })
+
+  return cls.RedirectToSelf(institution, session, "Unknown action", url_args={
+    'class_id': class_id,
+  })
+
+@classmethod
+def ClassWaitlistGetJdata(cls, institution, session, auth):
+  class_id = get_param("class_id")
+
+  waitlist = models.ClassWaitlist.FetchEntity(institution, session, class_id)
+  waitlist['emails'].sort()
+  students = models.Students.FetchJson(institution, session)
+  addStudentData(waitlist, students)
+  classes = models.Classes.FetchJson(institution, session)
+  class_details = ''
+  for c in classes:
+    if (str(c['id']) == class_id):
+      class_details = c
+      break
+  return {
+    'class_waitlist'  : waitlist,
+    'students'        : students,
+    'class_details'   : class_details
+  }
+
+@classmethod
+def ErrorCheckPostAction(cls, institution, session, auth):
+  checker = error_check_logic.Checker(institution, session)
+  checker.RunUpgradeScript()
+  return cls.RedirectToSelf(institution, session, "upgrade")
+
+@classmethod
+def ErrorCheckGetJdata(cls, institution, session, auth):
+  checker = error_check_logic.Checker(institution, session)
+  setup_status, error_chk_detail = checker.ValidateSetup()
+  return {
+    'setup_status': setup_status,
+    'error_chk_detail': error_chk_detail,
+  }
+
+@classmethod
+def SchedulerPostAction(cls, institution, session, auth):
+  action = get_param("action")
+  if action == "Clear Prefs":
+    ClearPrefs(institution, session)
+  if action == "Random Prefs":
+    RandomPrefs(institution, session)
+  if action == "Clear Schedules":
+    ClearAllSchedules(institution, session)
+  return cls.RedirectToSelf(institution, session, "saved classes")
+
+@classmethod
+def SchedulerGetJdata(cls, institution, session, auth):
+  num_students = len(models.Students.FetchJson(institution, session))
+  return {
+    'num_students': num_students,
+  }
+
+@classmethod
+def PreferencesPostAction(cls, institution, session, auth):
+  email = auth.student_email
+  want = get_param("want","").split(",")
+  if want[0] == '':
+    want.pop(0)
+  dontcare = get_param("dontcare","").split(",")
+  if dontcare[0] == '':
+    dontcare.pop(0)
+  dontwant = get_param("dontwant","").split(",")
+  if dontwant[0] == '':
+    dontwant.pop(0)
+  current_app.logger.info(f"want={want}, dontcare={dontcare}, dontwant={dontwant}")
+  models.Preferences.Store(email, institution, session,
+                           want, dontcare, dontwant)
+  if get_param("Save", None) == "Save":
+    current_app.logger.info("Form Saved")
+  else:
+    current_app.logger.info("Auto Save")
+  return cls.RedirectToSelf(institution, session, "Saved Preferences", url_args={
+    'student': email,
+  })
+
+@classmethod
+def PreferencesGetJdata(cls, institution, session, auth):
+  current_app.logger.info(f"auth={auth}")
+  classes = models.Classes.FetchJson(institution, session)
+  try:
+    _ = [c for c in classes]
+  except TypeError:
+    classes = []
+  classes_by_id = {}
+  use_full_description = auth.CanAdministerInstitutionFromUrl()
+  for c in classes:
+    class_id = str(c['id'])
+    class_name = c['name']
+    class_desc = logic.GetHoverText(institution, session, use_full_description, c)
+    classes_by_id[class_id] = {'name': class_name,
+                               'description': class_desc }
+  if not classes_by_id:
+    classes_by_id['0'] = {'name': 'None', 'desc': 'None'}
+  eligible_class_ids = set(logic.EligibleClassIdsForStudent(
+      institution, session, auth.student_entity, classes))
+
+  prefs = models.Preferences.FetchEntity(
+      auth.student_email, institution, session)
+  want_ids     = prefs.get("want","").split(',')
+  dontcare_ids = prefs.get("dontcare","").split(',')
+  dontwant_ids = prefs.get("dontwant","").split(',')
+
+  new_class_ids = eligible_class_ids.difference(want_ids)
+  new_class_ids = new_class_ids.difference(dontcare_ids)
+  new_class_ids = new_class_ids.difference(dontwant_ids)
+  dontcare_ids = list(new_class_ids) + dontcare_ids
+  if dontcare_ids[len(dontcare_ids)-1] == '':
+    dontcare_ids.pop()
+
+  def RemoveDeletedClasses(class_ids):
+    for class_id in class_ids:
+      if class_id in eligible_class_ids:
+        yield class_id
+
+  want_ids = list(RemoveDeletedClasses(want_ids))
+  dontcare_ids = list(RemoveDeletedClasses(dontcare_ids))
+  dontwant_ids = list(RemoveDeletedClasses(dontwant_ids))
+  current_app.logger.info('want: ' + ','.join(want_ids));
+  current_app.logger.info('dont want: ' + ','.join(dontwant_ids));
+  current_app.logger.info('dont care: ' + ','.join(dontcare_ids));
+  return {
+    'classes': classes_by_id,
+    'student': auth.student_entity,
+    'want_ids': want_ids,
+    'dontwant_ids': dontwant_ids,
+    'dontcare_ids': dontcare_ids,
+  }
+
+@classmethod
+def SchedulePostAction(cls, institution, session, auth):
+  email = auth.student_email
+  class_id = get_param("class_id")
+  action   = get_param("action")
+
+  if action == "add":
+    logic.AddStudentToClass(institution, session, email, class_id)
+  if action == "del":
+    logic.RemoveStudentFromClass(institution, session, email, class_id)
+  schedule = models.Schedule.Fetch(institution, session, email)
+  schedule = schedule.split(",")
+  if schedule and schedule[0] == "":
+    schedule = schedule[1:]
+  return jsonify(schedule)
+
+@classmethod
+def ScheduleGetJdata(cls, institution, session, auth):
+  email = auth.student_email
+  dayparts = models.Dayparts.FetchJson(institution, session)
+  if not dayparts:
+    dayparts = []
+  classes = models.Classes.FetchJson(institution, session)
+  try:
+    _ = [c for c in classes]
+  except TypeError:
+    classes = []
+  classes_by_daypart = {}
+  dayparts_ordered = []
+
+  max_row = max([daypart['row'] for daypart in dayparts])
+  max_col = max([daypart['col'] for daypart in dayparts])
+    
+  # order the dayparts by row and col specified in yaml
+  for row in range(max_row):
+    dayparts_ordered.append([])
+    for col in range(max_col):
+      found_daypart = False
+      for dp in dayparts:
+        if dp['row'] == row+1 and dp['col'] == col+1:
+          dayparts_ordered[row].append(dp['name'])
+          found_daypart = True
+      if found_daypart == False:
+        dayparts_ordered[row].append('')
+  eligible_classes = logic.EligibleClassIdsForStudent(
+      institution, session, auth.student_entity, classes)
+  for daypart in dayparts:
+    classes_by_daypart[daypart['name']] = []
+  classes_by_id = {}
+  use_full_description = auth.CanAdministerInstitutionFromUrl()
+  for c in classes:
+    class_id = str(c['id'])
+    if class_id not in eligible_classes:
+      continue
+    classes_by_id[class_id] = c
+    c['hover_text'] = logic.GetHoverText(institution, session, use_full_description, c)
+    c['description'] = logic.GetHTMLDescription(institution, session, c)
+    for daypart in [s['daypart'] for s in c['schedule']]:
+      if daypart in classes_by_daypart:
+        classes_by_daypart[daypart].append(c)
+  for daypart in classes_by_daypart:
+    classes_by_daypart[daypart].sort(key=lambda c:c['name'])
+    
+  schedule = models.Schedule.Fetch(institution, session, email)
+  schedule = schedule.split(",")
+  if schedule and schedule[0] == "":
+    schedule = schedule[1:]
+
+  config = models.Config.Fetch(institution, session)
+  return {
+    "student": auth.student_entity,
+    #"dayparts": dayparts,
+    "classes_by_daypart": classes_by_daypart,
+    "dayparts_ordered"  : dayparts_ordered,
+    "schedule"          : current_app.json.dumps(schedule),
+    "classes_by_id"     : classes_by_id,
+    "html_desc"         : config['htmlDesc'],
+    #"impersonation"     : f"&student={auth.student_email}" if auth.email!=auth.student_email else ""
+  }
+
 Views = {
-  "Config": {
+  # plain text (csv) data
+  "Rosters": {
     "view"     : "Form",
-    "route"    : "/config",
-    "template" : "config.html",
+    "route"    : "/rosters",
+    "template" :  "rosters.html",
     "schema"   : None,
-    "model"    : models.Config,
+    "model"    : None,
     "sample"   : None,
-    "save"     : ConfigSave,
-    "get_data" : getNone,
-    "get_jdata": ConfigGetJdata,
+    "save"     : RostersSave,
+    "get_data" : RostersGetData,
+    "get_jdata": getNone,
   },
+  # yaml form pages
   "Dayparts": {
     "view"    : "Form",
     "route"   : "/dayparts",
-    "template": "dayparts.html",
+    "template":  "dayparts.html",
     "schema"  : schemas.Dayparts,
     "model"   : models.Dayparts,
     "sample"  : "samples/dayparts.yaml"
@@ -324,7 +795,7 @@ Views = {
   "Classes": {
     "view"    : "Form",
     "route"   : "/classes",
-    "template": "classes.html",
+    "template":  "classes.html",
     "schema"  : schemas.Classes,
     "model"   : models.Classes,
     "sample"  : "samples/classes.yaml"
@@ -332,7 +803,7 @@ Views = {
   "Students": {
     "view"    : "Form",
     "route"   : "/students",
-    "template": "students.html",
+    "template":  "students.html",
     "schema"  : schemas.Students,
     "model"   : models.Students,
     "sample"  : "samples/students.yaml"
@@ -340,7 +811,7 @@ Views = {
   "Teachers": {
     "view"    : "Form",
     "route"   : "/teachers",
-    "template": "teachers.html",
+    "template":  "teachers.html",
     "schema"  : schemas.Teachers,
     "model"   : models.Teachers,
     "sample"  : "samples/teachers.yaml"
@@ -348,7 +819,7 @@ Views = {
   "GroupsClasses": {
     "view"    : "Form",
     "route"   : "/groups_classes",
-    "template": "groups_classes.html",
+    "template":  "groups_classes.html",
     "schema"  : schemas.ClassGroups,
     "model"   : models.GroupsClasses,
     "sample"  : "samples/groups_classes.yaml"
@@ -356,7 +827,7 @@ Views = {
   "GroupsStudents": {
     "view"    : "Form",
     "route"   : "/groups_students",
-    "template": "groups_students.html",
+    "template":  "groups_students.html",
     "schema"  : schemas.StudentGroups,
     "model"   : models.GroupsStudents,
     "sample"  : "samples/groups_students.yaml"
@@ -364,80 +835,157 @@ Views = {
   "Requirements": {
     "view"    : "Form",
     "route"   : "/requirements",
-    "template": "requirements.html",
+    "template":  "requirements.html",
     "schema"  : schemas.Requirements,
     "model"   : models.Requirements,
     "sample"  : "samples/requirements.yaml"
   },
+  "ServingRules": {
+    "view"    : "Form",
+    "route"   : "/serving_rules",
+    "template":  "serving_rules.html",
+    "schema"  : schemas.ServingRules,
+    "model"   : models.ServingRules,
+    "sample"  : "samples/serving_rules.yaml"
+  },
   "AutoRegister": {
     "view"      : "Form",
     "route"     : "/auto_register",
-    "template"  : "auto_register.html",
+    "template"  :  "auto_register.html",
     "schema"    : schemas.AutoRegister,
     "model"     : models.AutoRegister,
     "sample"    : "samples/auto_register.yaml",
     "after_save": AutoRegisterAfterSave,
     "get_jdata" : AutoRegisterGetJdata,
   },
-  "ServingRules": {
-    "view"    : "Form",
-    "route"   : "/serving_rules",
-    "template": "serving_rules.html",
-    "schema"  : schemas.ServingRules,
-    "model"   : models.ServingRules,
-    "sample"  : "samples/serving_rules.yaml"
-  },
-  "Rosters": {
-    "view"    : "Form",
-    "route"   : "/rosters",
-    "template": "rosters.html",
-    "schema"  : None,
-    "model"   : None,
-    "sample"  : None,
-    "save"    : RostersSave,
-    "get_data" : RostersGetData,
-    "get_jdata": getNone,
-  },
+  # HTML data
   "WelcomeSetup": {
-    "view"    : "Form",
-    "route"   : "/welcome_setup",
-    "template": "welcome_setup.html",
-    "schema"  : None,
-    "model"   : models.Welcome,
-    "sample"  : "samples/welcome.html",
-    "save"    : WelcomeSetupSave,
+    "view"     : "Form",
+    "route"    : "/welcome_setup",
+    "template" :  "welcome_setup.html",
+    "schema"   : None,
+    "model"    : models.Welcome,
+    "sample"   : "samples/welcome.html",
+    "save"     : WelcomeSetupSave,
     "get_jdata": getNone,
   },
   "Closed": {
-    "view"    : "Form",
-    "route"   : "/closed",
-    "template": "closed.html",
-    "schema"  : None,
-    "model"   : models.Closed,
-    "sample"  : "samples/closed.html",
+    "view"     : "Form",
+    "route"    : "/closed",
+    "template" :  "closed.html",
+    "schema"   : None,
+    "model"    : models.Closed,
+    "sample"   : "samples/closed.html",
     "get_jdata": getNone,
   },
   "Materials": {
-    "view"    : "Form",
-    "route"   : "/materials",
-    "template": "materials.html",
-    "schema"  : None,
-    "model"   : models.Materials,
-    "sample"  : "samples/materials.html",
+    "view"     : "Form",
+    "route"    : "/materials",
+    "template" :  "materials.html",
+    "schema"   : None,
+    "model"    : models.Materials,
+    "sample"   : "samples/materials.html",
     "get_jdata": getNone,
   },
-  "ClassList": {
-    "view"    : "Form",
-    "route"   : "/class_list",
-    "template": "class_list.html",
-    "schema"  : None,
-    "model"   : None,
-    "sample"  : None,
-    "get_data": getNone,
-    "get_jdata": ClassListGetJdata,
-    "disallow_post": True
+  # json data
+  "Config": {
+    "view"     : "Form",
+    "route"    : "/config",
+    "template" :  "config.html",
+    "schema"   : None,
+    "model"    : None,
+    "sample"   : None,
+    "save"     : ConfigSave,
+    "get_data" : getNone,
+    "get_jdata": ConfigGetJdata,
   },
-
+  # json data, more complex redirect after post
+  "TakeAttendance": {
+    "view"        : "Form",
+    "route"       : "/teacher/take_attendance",
+    "template"    : "take_attendance.html",  
+    "schema"      : None,
+    "model"       : None,
+    "sample"      : None, 
+    "get_data"    : getNone,
+    "get_jdata"   : TakeAttendanceGetJdata,
+    "post_action" : TakeAttendancePostAction,
+    "teacher_access": True,
+  },
+  "ClassRoster": {
+    "view"       : "Form",
+    "route"      : "/class_roster",
+    "template"   :  "class_roster.html",  
+    "schema"     : None,
+    "model"      : None,
+    "sample"     : None, 
+    "get_data"   : getNone,
+    "get_jdata"  : ClassRosterGetJdata,
+    "post_action": ClassRosterPostAction,
+  },
+  "ClassWaitlist": {
+    "view"       : "Form",
+    "route"      : "/class_waitlist",
+    "template"   :  "class_waitlist.html", 
+    "schema"     : None,
+    "model"      : None,
+    "sample"     : None,  
+    "get_data"   : getNone,
+    "get_jdata"  : ClassWaitlistGetJdata,
+    "post_action": ClassWaitlistPostAction,
+  },
+  "ErrorCheck": {
+    "view"       : "Form",
+    "route"      : "/error_check",
+    "template"   :  "error_check.html",   
+    "schema"     : None,
+    "model"      : None,
+    "sample"     : None,
+    "get_data"   : getNone,
+    "get_jdata"  : ErrorCheckGetJdata,
+    "post_action": ErrorCheckPostAction,
+  },
+  "Scheduler": {
+    "view"       : "Form",
+    "route"      : "/scheduler",
+    "template"   :  "scheduler.html",   
+    "schema"     : None,
+    "model"      : None,
+    "sample"     : None,
+    "get_data"   : getNone,
+    "get_jdata"  : SchedulerGetJdata,
+    "post_action": SchedulerPostAction,
+  },
+  "Preferences": {
+    "view"       : "Form",
+    "route"      : "/preferences",
+    "template"   :  "preferences.html",   
+    "schema"     : None,
+    "model"      : None,
+    "sample"     : None,
+    "get_data"   : getNone,
+    "get_jdata"  : PreferencesGetJdata,
+    "post_action": PreferencesPostAction,
+    "admimurlaccess": False,
+    "student_access": True,
+    "student_page"  : "preferences",
+  },
+  "Schedule": {
+    "view"       : "Form",
+    "route"      : "/schedule",
+    "template"   :  "schedule.html",   
+    "schema"     : None,
+    "model"      : None,
+    "sample"     : None,
+    "get_data"   : getNone,
+    "get_jdata"  : ScheduleGetJdata,
+    "post_action": SchedulePostAction,
+    "admimurlaccess": False,
+    "student_access": True,
+    "student_page"  : "schedule",
+    "use_403"       : True,
+  },
+#app.add_url_rule('/schedule', view_func=schedule.Schedule.as_view('schedule'))
 }
 
 class FormView(MethodView):
@@ -449,27 +997,27 @@ class FormView(MethodView):
     cls.template      = Views[cls.name]["template"]
     cls.route         = Views[cls.name]["route"]
     cls.sample        = Views[cls.name]["sample"]
-    cls.disallow_post = Views[cls.name].get("disallow_post",False)
+    cls.admimurlaccess= Views[cls.name].get("admimurlaccess",True)
+    cls.student_access= Views[cls.name].get("student_access",False)
+    cls.teacher_access= Views[cls.name].get("teacher_access",False)
+    cls.student_page  = Views[cls.name].get("student_page"  ,None)
+    cls.use_403       = Views[cls.name].get("use_403"       ,False)
 
   @classmethod
   def as_view(cls):
     return super().as_view(cls.name)
 
   @classmethod
-  def UrlArgs(cls):
-    return {}
-
-  @classmethod
-  def RedirectToSelf(cls, institution, session, message):
+  def RedirectToSelf(cls, institution, session, message, url_args={}):
     args = {'message': message, 
             'institution': institution,
             'session': session}
-    args.update(cls.UrlArgs())
+    args.update(url_args)
     return redirect(f'{cls.route}?%s' % urllib.parse.urlencode(args))
 
   @classmethod
-  def Save(cls, institution, session):
-    data = request.form.get("data")
+  def Save(cls, institution, session, auth):
+    data = get_param("data", None)
     if not data:
       current_app.logger.critical(f"no {cls.name} data")
     if cls.schema:
@@ -484,57 +1032,63 @@ class FormView(MethodView):
     pass
 
   @classmethod
-  def post(cls):
-    if cls.disallow_post:
-      abort(405) #METHOD NOT ALLOWED
-
-    auth = authorizer.Authorizer()
-    if not auth.CanAdministerInstitutionFromUrl():
-      return auth.Redirect()
-
-    institution = request.args.get("institution")
-    if not institution:
-      current_app.logger.critical("no institution")
-    session = request.args.get("session")
-    if not session:
-      current_app.logger.critical("no session")
-
-    data = cls.Save(institution, session)
+  def PostAction(cls, institution, session, auth):
+    data = cls.Save(institution, session, auth)
     cls.AfterSave(institution, session, data)
-
     return cls.RedirectToSelf(institution, session, f"saved {cls.name} data")
 
   @classmethod
-  def GetData(cls, institution, session):
+  def post(cls):
+    auth = authorizer.Authorizer()
+    if not ((cls.admimurlaccess and auth.CanAdministerInstitutionFromUrl()) or
+            (cls.teacher_access and auth.HasTeacherAccess()) or
+            (cls.student_access and auth.HasStudentAccess())):
+      if cls.use_403:
+        abort(403)
+      return auth.Redirect()
+
+    institution = get_param("institution")
+    session     = get_param("session")
+
+    if cls.student_page and not auth.HasPageAccess(institution, session, cls.student_page):
+      if cls.use_403:
+        abort(403)
+      return auth.RedirectTemporary(institution, session)
+
+    return cls.PostAction(institution, session, auth)
+
+  @classmethod
+  def GetData(cls, institution, session, auth):
     data = cls.model.Fetch(institution, session)
     if not data and cls.sample:
       with open(cls.sample) as x: data = x.read()
     return data
 
   @classmethod
-  def GetJdata(cls, institution, session):
+  def GetJdata(cls, institution, session, auth):
     return cls.model.FetchJson(institution, session)
 
   @classmethod
   def get(cls):
     auth = authorizer.Authorizer()
-    if not auth.CanAdministerInstitutionFromUrl():
+    if not ((cls.admimurlaccess and auth.CanAdministerInstitutionFromUrl()) or
+            (cls.teacher_access and auth.HasTeacherAccess()) or
+            (cls.student_access and auth.HasStudentAccess())):
       return auth.Redirect()
 
-    institution = request.args.get("institution")
-    if not institution:
-      current_app.logger.critical("no institution")
-    session = request.args.get("session")
-    if not session:
-      current_app.logger.critical("no session")
-
-    message = request.args.get('message')
+    institution = get_param("institution")
+    session     = get_param("session")
+    message     = get_param('message', None)
     session_query = urllib.parse.urlencode({'institution': institution,
-                                      'session': session})
+                                            'session': session})
+
+    if cls.student_page and not auth.HasPageAccess(institution, session, cls.student_page):
+      return auth.RedirectTemporary(institution, session)
+
     setup_status = error_check_logic.Checker.getStatus(institution, session)
 
-    data = cls.GetData(institution, session)
-    jdata = cls.GetJdata(institution, session)
+    data = cls.GetData(institution, session, auth)
+    jdata = cls.GetJdata(institution, session, auth)
 
     return render_template(cls.template, 
       uid=auth.uid,
@@ -545,12 +1099,15 @@ class FormView(MethodView):
       session_query=session_query,
       data=data,
       jdata=jdata,
-      self=request.url
+      self=request.url,
+      impersonation=f"&student={auth.student_email}" if auth.email!=auth.student_email else "",
     )
 
-def FormClass(classname, save=None, after_save=None, get_data=None, get_jdata=None, url_args=None):
+def FormClass(classname, post_action=None, save=None, after_save=None, get_data=None, get_jdata=None):
   class NewClass(FormView):
     name = classname     
+    if post_action:
+      PostAction = post_action  
     if save:
       Save = save
     if after_save:
@@ -559,6 +1116,4 @@ def FormClass(classname, save=None, after_save=None, get_data=None, get_jdata=No
       GetData = get_data
     if get_jdata:
       GetJdata = get_jdata
-    if url_args:
-      UrlArgs = url_args
   return NewClass

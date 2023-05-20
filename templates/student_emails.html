@@ -1,6 +1,6 @@
-{% if user_type == 'Admin' %}
+{% if data.user_type == 'Admin' %}
   {% extends 'menu.html' %}
-{% elif user_type == 'Teacher' %}
+{% elif data.user_type == 'Teacher' %}
   {% extends 'menu_teacher.html' %}
 {% endif %}
 {% block session_body %}
@@ -8,7 +8,7 @@
 <script>
 window.onload = function() {
   let listeners = [];
-  {% for c in classes %}
+  {% for c in data.classes %}
     var copyBtn = document.getElementById("copybtn{{c['id']}}");
     copyBtn.addEventListener("click", function(event) {
       var emailList = document.getElementById("emails{{c['id']}}");
@@ -22,14 +22,14 @@ window.onload = function() {
   copyAll.addEventListener("click", function(event) {
     // Each item separated by semicolon, each row separated by \n
     let csv_data = "Name; Instructor; Time\n";
-    {% for c in classes %}
+    {% for c in data.classes %}
       csv_data += "{{c['name']}}; {{c['instructor']}};";
       {% for s in c['schedule'] %}
         csv_data += "{{s['daypart']}}";
         csv_data += "{{', ' if not loop.last else ''}}";
       {% endfor %}
       csv_data += ";";
-      {% for email in rosters[c['id']]['emails'] %}
+      {% for email in data.rosters[c['id']]['emails'] %}
         csv_data += "{{email}}";
         csv_data += "{{';' if not loop.last else ''}}";
       {% endfor %}
@@ -48,11 +48,11 @@ window.onload = function() {
 </script>
 
 <h3>Student Emails</h3>
-{% if classes %}
+{% if data.classes %}
 <h4>Use this page to get email addresses of registered students.</h4>
 <p>To download emails for all classes to .csv file, click here: <button id="copyall">Download All</button><br>When opening the .csv file, choose semicolon ";" as the separator.</p>
 <p>To copy emails for a single class, find the class you want below and click Copy Emails to save to your clipboard.<br>Then go to your email and paste (Ctrl-v) the email addresses into the 'To' field of your message.</p>
-{% for c in classes %}
+{% for c in data.classes %}
 <div id="email-main">
   <div id="email-heading">
     <button class="email-copybtn" title="copy to clipboard" id="copybtn{{c['id']}}">Copy Emails</button>
@@ -62,7 +62,7 @@ window.onload = function() {
         {{ s['daypart'] }}{{', ' if not loop.last }}
       {% endfor %}</div>
   </div>
-  <textarea class="email-list" id="emails{{c['id']}}" readonly>{% for email in rosters[c['id']]['emails'] %}{{email}}{{';' if not loop.last }}{% endfor %}</textarea>
+  <textarea class="email-list" id="emails{{c['id']}}" readonly>{% for email in data.rosters[c['id']]['emails'] %}{{email}}{{';' if not loop.last }}{% endfor %}</textarea>
 </div>
 {% endfor %}
 {% else %}

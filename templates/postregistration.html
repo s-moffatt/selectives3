@@ -10,18 +10,18 @@ var NOT_SELECTED_COLOR = '#000000'; // black
 //58 : { 'name' : 'Yearbook', 'dayparts': ['Thurs B',]},
 //50 : { 'name' : 'Dance', 'dayparts': ['Thurs B','Fri B',]},
 //};
-{% if html_desc == 'htmlNo' %}
+{% if data.html_desc == 'htmlNo' %}
 classes_by_id = {
-{% for class_id in classes_by_id -%}
+{% for class_id in data.classes_by_id -%}
   {{ class_id }} : {
-    'name' : '{{ classes_by_id[class_id]['name'] }}',
-    'dayparts': [{% for s in classes_by_id[class_id]['schedule'] -%}
+    'name' : '{{ data.classes_by_id[class_id]['name'] }}',
+    'dayparts': [{% for s in data.classes_by_id[class_id]['schedule'] -%}
                     '{{ s['daypart'] }}',
                  {%- endfor %}],
-    'max_enrollment': '{{ classes_by_id[class_id]['max_enrollment'] }}',
-    'instructor': '{{ classes_by_id[class_id]['instructor'] }}',
-    'fitness': '{{ classes_by_id[class_id]['fitness'] }}',
-    'donation': '{{ classes_by_id[class_id]['donation']}}'
+    'max_enrollment': '{{ data.classes_by_id[class_id]['max_enrollment'] }}',
+    'instructor': '{{ data.classes_by_id[class_id]['instructor'] }}',
+    'fitness': '{{ data.classes_by_id[class_id]['fitness'] }}',
+    'donation': '{{ data.classes_by_id[class_id]['donation']}}'
   },
 {%- endfor %}
 };
@@ -29,15 +29,15 @@ classes_by_id = {
 classes_by_id = {
 {% for class_id in classes_by_id -%}
   {{ class_id }} : {
-    'name' : '{{ classes_by_id[class_id]['name'] }}',
-    'dayparts': [{% for s in classes_by_id[class_id]['schedule'] -%}
+    'name' : '{{ data.classes_by_id[class_id]['name'] }}',
+    'dayparts': [{% for s in data.classes_by_id[class_id]['schedule'] -%}
                     '{{ s['daypart'] }}',
                  {%- endfor %}],
-    'max_enrollment': '{{ classes_by_id[class_id]['max_enrollment']}}',
-    'instructor': '{{ classes_by_id[class_id]['instructor']}}',
-    'description': '{{ classes_by_id[class_id]['description']|safe}}',
-    'fitness': '{{ classes_by_id[class_id]['fitness'] }}',
-    'donation': '{{ classes_by_id[class_id]['donation']}}'
+    'max_enrollment': '{{ data.classes_by_id[class_id]['max_enrollment']}}',
+    'instructor': '{{ data.classes_by_id[class_id]['instructor']}}',
+    'description': '{{ data.classes_by_id[class_id]['description']|safe}}',
+    'fitness': '{{ data.classes_by_id[class_id]['fitness'] }}',
+    'donation': '{{ data.classes_by_id[class_id]['donation']}}'
   },
 {%- endfor %}
 };
@@ -98,19 +98,19 @@ function createSidePanel(class_id) {
 }
 </script>
 
-{% if not student %}
+{% if not data.student %}
 Student not found! This error should never happen. Please inform the selectives team. Thanks!
 {% else %}
 <div>
 <div class="profile-user">
-  <h2 class="profile-data">{{ student['first'] + ' ' + student['last'] }}</h2>
-  <h3 class="profile-data">Homeroom: {{ student['current_homeroom'] }}</h3>
-  <h3 class="profile-data">Grade: {{ student['current_grade'] }}</h3>
-  <h3 class="profile-print"><a href="print_schedule?{{ session_query }}&student={{student['email'] }}">Printer Friendly Page</a></h3>
+  <h2 class="profile-data">{{ data.student['first'] + ' ' + data.student['last'] }}</h2>
+  <h3 class="profile-data">Homeroom: {{ data.student['current_homeroom'] }}</h3>
+  <h3 class="profile-data">Grade: {{ data.student['current_grade'] }}</h3>
+  <h3 class="profile-print"><a href="print_schedule?{{ session_query }}&student={{data.student['email'] }}">Printer Friendly Page</a></h3>
 </div>
 
 <table>
-  {% for row in dayparts_ordered %}
+  {% for row in data.dayparts_ordered %}
   <tr>
     <td class="schedPostRegRowHeader"></td>
     {% for daypart in row %}
@@ -126,17 +126,17 @@ Student not found! This error should never happen. Please inform the selectives 
     </td>
     {% for daypart in row %}
       <td class="schedPostRegItem">
-      {% if schedule_by_daypart[daypart] %}
-        <div onmouseover="setMouseOverBackground(this, '{{ schedule_by_daypart[daypart]['id'] }}');"
+      {% if data.schedule_by_daypart[daypart] %}
+        <div onmouseover="setMouseOverBackground(this, '{{ data.schedule_by_daypart[daypart]['id'] }}');"
              onmouseout="setMouseOutBackground(this);">
-        <b>{{ schedule_by_daypart[daypart]['name'] }}</b><br>
-        {% for s in schedule_by_daypart[daypart]['schedule'] %}
+        <b>{{ data.schedule_by_daypart[daypart]['name'] }}</b><br>
+        {% for s in data.schedule_by_daypart[daypart]['schedule'] %}
           {% if s['daypart'] == daypart %}
           {{ s['location'] }}<br>
           {% endif %}
         {% endfor %}
-        {{ schedule_by_daypart[daypart]['instructor'] }}<br>
-        {{ schedule_by_daypart[daypart]['donation'] }}<br>
+        {{ data.schedule_by_daypart[daypart]['instructor'] }}<br>
+        {{ data.schedule_by_daypart[daypart]['donation'] }}<br>
         </div>
       {% endif %}
       </td>

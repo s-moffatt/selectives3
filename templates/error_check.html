@@ -2,7 +2,7 @@
 {% block session_body %}
 
 <h3>Validate Setup</h3>
-{% if setup_status == 'DB_UPDATE_NEEDED' %}
+{% if jdata.setup_status == 'DB_UPDATE_NEEDED' %}
 <p style="color:red">DB UPDATE NEEDED!</p>
 <form method=post>
 <input type=hidden name="institution" value="{{ institution }}" />
@@ -11,7 +11,7 @@ Click to run the upgrade script.
 <input type=submit />
 </form>
 {% endif %}
-{% for line in error_chk_detail.splitlines() %}
+{% for line in jdata.error_chk_detail.splitlines() %}
   {{ line }}<br>
 {% endfor %}
 

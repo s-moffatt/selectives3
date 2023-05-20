@@ -1,6 +1,6 @@
-{% if user_type == 'Admin' %}
+{% if data.user_type == 'Admin' %}
   {% extends 'menu.html' %}
-{% elif user_type == 'Teacher' %}
+{% elif data.user_type == 'Teacher' %}
   {% extends 'menu_teacher.html' %}
 {% endif %}
 {% block session_body %}
@@ -17,7 +17,7 @@ var MAX_STUDENTS_PER_PAGE = 17;
 var TEXT_FONT_SIZE = 8;
 
 student_list = [
-{% for s in students %}
+{% for s in data.students %}
   {'last':"{{s['last']}}",
    'first':"{{s['first']}}",
    'current_grade':{{s['current_grade']}},
@@ -46,13 +46,13 @@ function selectedByRadio(s, radio) {
   if (radio=='All') {
     return true;
   }
-  {% for g in homerooms %}
+  {% for g in data.homerooms %}
   if (radio=='Grade {{g}}') {
     return (s['current_grade'] == {{g}});
   }
   {% endfor %}
-  {% for g in homerooms %}
-    {% for hr in homerooms_by_grade[g] %}
+  {% for g in data.homerooms %}
+    {% for hr in data.homerooms_by_grade[g] %}
     if (radio=='Rm {{hr}}') {
       return (s['current_homeroom'] == {{hr}});
     }
@@ -78,7 +78,7 @@ window.onload = function() {
     var line3 = 0;
 
     doc.setFontSize(TEXT_FONT_SIZE);
-    doc.text('Date Last Modified: ' + '{{last_modified}}', 145, 7);
+    doc.text('Date Last Modified: ' + '{{data.last_modified}}', 145, 7);
     doc.text('Page ' + totalPgCnt, 180, 12)
     doc.setFontType('bold');
     line0 = currY-4;
@@ -125,7 +125,7 @@ window.onload = function() {
           studentCnt = 1;
           currY = 22;
           totalPgCnt += 1;
-          doc.text('Date Last Modified: ' + '{{last_modified}}', 145, 7);
+          doc.text('Date Last Modified: ' + '{{data.last_modified}}', 145, 7);
           doc.text('Page ' + totalPgCnt, 180, 12)
           doc.setFontType('bold');
           doc.text('Monday', 42, line0, null, null, 'center');
@@ -151,16 +151,16 @@ Select students to include in the report, then click Download.<br><br>
       <td></td><td><input type="radio" id="all" name="radioOption" value="All" checked="checked">All</td>
     </tr>
     <tr><td>By Homeroom</td></tr>
-    {% for g in homerooms %}
+    {% for g in data.homerooms %}
     <tr>
-      {% for hr in homerooms_by_grade[g] %}
+      {% for hr in data.homerooms_by_grade[g] %}
       <td><input type="radio" id="rm{{hr}}" name="radioOption" value="Rm {{hr}}">Rm. {{hr}}</td>
       {% endfor %}
     </tr>
     {% endfor %}
     <tr><td>By Grade</td></tr>
     <tr>
-    {% for g in homerooms %}
+    {% for g in data.homerooms %}
       <td><input type="radio" id="grade{{g}}" name="radioOption" value="Grade {{g}}">{{g}}</td>
       {% endfor %}
     </tr>

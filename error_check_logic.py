@@ -85,13 +85,13 @@ class Checker(object):
 
   def RunUpgradeScript(self):
     dayparts = models.Dayparts.Fetch(self.institution, self.session)
-    models.Dayparts.store(self.institution, self.session, dayparts)
+    models.Dayparts.Store(self.institution, self.session, dayparts)
 
     classes = models.Classes.Fetch(self.institution, self.session)
-    models.Classes.store(self.institution, self.session, classes)
+    models.Classes.Store(self.institution, self.session, classes)
 
     students = models.Students.Fetch(self.institution, self.session)
-    models.Students.store(self.institution, self.session, students)
+    models.Students.Store(self.institution, self.session, students)
 
     #requirements = models.Requirements.Fetch(self.institution, self.session)
     #models.Requirements.store(self.institution, self.session, requirements)
@@ -100,7 +100,7 @@ class Checker(object):
     #models.GroupsClasses.store(self.institution, self.session, groups_classes)
 
     groups_students = models.GroupsStudents.Fetch(self.institution, self.session)
-    models.GroupsStudents.store(self.institution, self.session, groups_students)
+    models.GroupsStudents.Store(self.institution, self.session, groups_students)
 
     self.setDBVersion(self.institution, self.session, CURRENT_DB_VERSION)
 

@@ -1,6 +1,6 @@
-{% if user_type == 'Admin' %}
+{% if data.user_type == 'Admin' %}
   {% extends 'menu.html' %}
-{% elif user_type == 'Teacher' %}
+{% elif data.user_type == 'Teacher' %}
   {% extends 'menu_teacher.html' %}
 {% endif %}
 {% block session_body %}
@@ -17,7 +17,7 @@ var MAX_STUDENTS_PER_PAGE = 17;
 var TEXT_FONT_SIZE = 8;
 
 student_list = [
-{% for s in students %}
+{% for s in data.students %}
 { {% for key in s %}
   "{{key}}":"{{s[key]}}",
   {% endfor %} },
@@ -25,7 +25,7 @@ student_list = [
 ]
 
 class_names_by_id = {
-{% for c in classes %}
+{% for c in data.classes %}
   "{{c['id']}}":"{{c['name']|safe}}".slice(0, 20),
 {% endfor %}
 }
@@ -43,13 +43,13 @@ function selectedByRadio(s, radio) {
   if (radio=='All') {
     return true;
   }
-  {% for g in homerooms %}
+  {% for g in data.homerooms %}
   if (radio=='Grade {{g}}') {
     return (s['current_grade'] == {{g}});
   }
   {% endfor %}
-  {% for g in homerooms %}
-    {% for hr in homerooms_by_grade[g] %}
+  {% for g in data.homerooms %}
+    {% for hr in data.homerooms_by_grade[g] %}
     if (radio=='Rm {{hr}}') {
       return (s['current_homeroom'] == {{hr}});
     }
@@ -65,19 +65,19 @@ window.onload = function() {
   var unselectAll = document.getElementById("unselectAll");
 
   selectAll.onclick = function() {
-    {% for c in classes %}
+    {% for c in data.classes %}
       document.getElementById("selectPDF{{c['id']}}").checked = true;
     {% endfor %}
   }
   unselectAll.onclick = function() {
-    {% for c in classes %}
+    {% for c in data.classes %}
       document.getElementById("selectPDF{{c['id']}}").checked = false;
     {% endfor %}
   }
 
   downloadSched.onclick = function() {
     var lottery_classes = [];
-    {% for c in classes %}
+    {% for c in data.classes %}
     if (document.getElementById("selectPDF{{c['id']}}").checked) {
       lottery_classes.push("{{c['id']}}");
     }
@@ -95,7 +95,7 @@ window.onload = function() {
     var blockB = ['Mon B', 'Tues B', 'Thurs B', 'Fri B'];
 
     doc.setFontSize(TEXT_FONT_SIZE);
-    doc.text('Date Last Modified: ' + '{{last_modified}}', 145, 7);
+    doc.text('Date Last Modified: ' + '{{data.last_modified}}', 145, 7);
     doc.text('Page ' + totalPgCnt, 180, 12)
     doc.setFontType('bold');
     line0 = currY-4;
@@ -167,7 +167,7 @@ window.onload = function() {
           studentCnt = 1;
           currY = 22;
           totalPgCnt += 1;
-          doc.text('Date Last Modified: ' + '{{last_modified}}', 145, 7);
+          doc.text('Date Last Modified: ' + '{{data.last_modified}}', 145, 7);
           doc.text('Page ' + totalPgCnt, 180, 12)
           doc.setFontType('bold');
           doc.text('Monday', 37, line0, null, null, 'center');
@@ -193,12 +193,12 @@ First, select classes with a lottery - they will be highlighted with a box in th
 <br>Finally, click Download.
 <br><br>
 
-{% if classes %}
+{% if data.classes %}
 <form>
 <input type="button" id="selectAll" value="Select All">
 <input type="button" id="unselectAll" value="Unselect All">
 <table>
-  {% for c in classes %}
+  {% for c in data.classes %}
     <tr class=highlight>
       <td><input type="checkBox" id="selectPDF{{c['id']}}" value="c"+{{c['id']}}></td>
       <td>{{ c['name'] }}</td>
@@ -216,16 +216,16 @@ First, select classes with a lottery - they will be highlighted with a box in th
       <td></td><td><input type="radio" id="all" name="radioOption" value="All" checked="checked">All</td>
     </tr>
     <tr><td>By Homeroom</td></tr>
-    {% for g in homerooms %}
+    {% for g in data.homerooms %}
     <tr>
-      {% for hr in homerooms_by_grade[g] %}
+      {% for hr in data.homerooms_by_grade[g] %}
       <td><input type="radio" id="rm{{hr}}" name="radioOption" value="Rm {{hr}}">Rm. {{hr}}</td>
       {% endfor %}
     </tr>
     {% endfor %}
     <tr><td>By Grade</td></tr>
     <tr>
-    {% for g in homerooms %}
+    {% for g in data.homerooms %}
       <td><input type="radio" id="grade{{g}}" name="radioOption" value="Grade {{g}}">{{g}}</td>
       {% endfor %}
     </tr>

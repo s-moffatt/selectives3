@@ -23,7 +23,7 @@ function SetModified() {
   // record the time of the last change
   last_change_timestamp = Date.now();
   // set the timer to save in 5 seconds
-  ResetAutoSaveTimer(5);
+  // ResetAutoSaveTimer(5);
   // Don't let the user leave without saving
   window.onbeforeunload = confirmOnPageExit;
   document.getElementById("status").innerHTML = "Modified";
@@ -37,7 +37,7 @@ function SetSaved() {
 
 function SetSaveFail() {
   // set the timer to try again in 5 seconds
-  ResetAutoSaveTimer(5);
+  // ResetAutoSaveTimer(5);
   window.onbeforeunload = confirmOnPageExit;
   document.getElementById("status").innerHTML = "Save Failed";
 }
@@ -106,17 +106,17 @@ function AutoSave() {
 
 
 <h2 style="margin-bottom:0">
-  {{ student['first'] + ' ' + student['last'] }}
+  {{ jdata.student['first'] + ' ' + jdata.student['last'] }}
 </h2>
 <h3 style="margin-bottom:4px; margin-top:4px">
-  Homeroom: {{ student['current_homeroom'] }}<br>
-  Grade: {{ student['current_grade'] }}<br>
+  Homeroom: {{ jdata.student['current_homeroom'] }}<br>
+  Grade: {{ jdata.student['current_grade'] }}<br>
 </h3>
 
 <form method=post>
 <input type=hidden name="institution" value="{{ institution }}" />
 <input type=hidden name="session" value="{{ session }}" />
-<input type=hidden name="student" value="{{ student['email'] }}" />
+<input type=hidden name="jdata.student" value="{{ jdata.student['email'] }}" />
 <input type=hidden id="want" name="want" value="" />
 <input type=hidden id="dontwant" name="dontwant" value="" />
 <input type=hidden id="dontcare" name="dontcare" value="" />
@@ -128,23 +128,23 @@ function AutoSave() {
 </div>
 <div class="prefGroup">
   <ol class="prefOrderedList" id="DontWantSortableList">
-    {% for id in dontwant_ids %}
-      <li title='{{ classes[id].description }}' value='{{ id }}' class="prefListItem">
-          {{ classes[id].name }}
+    {% for id in jdata.dontwant_ids %}
+      <li title='{{ jdata.classes[id].description }}' value='{{ id }}' class="prefListItem">
+          {{ jdata.classes[id].name }}
       </li>
     {% endfor %}
   </ol>
   <ol class="prefOrderedList" id="DontCareSortableList">
-    {% for id in dontcare_ids %}
-      <li title='{{ classes[id].description }}' value='{{ id }}' class="prefListItem">
-          {{ classes[id].name }}
+    {% for id in jdata.dontcare_ids %}
+      <li title='{{ jdata.classes[id].description }}' value='{{ id }}' class="prefListItem">
+          {{ jdata.classes[id].name }}
       </li>
     {% endfor %}
   </ol>
   <ol class="prefOrderedList" id="WantSortableList">
-    {% for id in want_ids %}
-      <li title='{{ classes[id].description }}' value='{{ id }}' class="prefListItem">
-          {{ classes[id].name }}
+    {% for id in jdata.want_ids %}
+      <li title='{{ jdata.classes[id].description }}' value='{{ id }}' class="prefListItem">
+          {{ jdata.classes[id].name }}
       </li>
     {% endfor %}
   </ol>

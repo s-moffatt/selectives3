@@ -92,7 +92,7 @@ class Model():
     elif len(results) <= 0:
       return []
     else:
-      return {i.key.parent.id_or_name:1 for i in results}.keys()
+      return list({i.key.parent.id_or_name:1 for i in list(filter(lambda j: j.key.id_or_name==child,results))}.keys())
 
 class Attribute(Model):
   attribute = None
@@ -195,10 +195,15 @@ class Session(Model):
       current_app.logger.error("session key not found: %s, %s", institution, session)
 
   @classmethod
-  def ServingSession(cls, institution):
+  def ServingSession(cls, *args):
     'Get the active session (should only have 1 or 0 session active)'
-    ss = cls.Fetch(ancestor=cls.parent_key(institution),filters=[("active", "=", True)])
-    return ss[0].key.id_or_name if ss else None
+    ss = None
+    if len(args)>0:
+      institution = args[0]
+      ss = cls.Fetch(ancestor=cls.parent_key(institution),filters=[("active", "=", True)])
+    else:  
+      ss = cls.Fetch(filters=[("active", "=", True)])
+    return ss
 
 class ServingRules(YamlJsonAttribute):
   """List of serving rules in yaml and json format."""
@@ -329,7 +334,7 @@ class Preferences(Model):
       "email": email,
       "want": ','.join(want),
       "dontcare": ','.join(dontcare),
-      "dontwant": ','.join(dontcare) }
+      "dontwant": ','.join(dontwant) }
     #current_app.logger.info('saving preferences = %s' % prefs)
     super().Store(institution,session,email,data=prefs)
 
@@ -486,6 +491,7 @@ class Attendance(Model):
   #           'note': string },
   #  date2: { . . . }
   # }
+  @classmethod
   def Store(cls, institution, session, class_id, attendance_obj):
     class_id = str(class_id)
     super().Store(institution, session, class_id, data=attendance_obj)
@@ -493,8 +499,8 @@ class Attendance(Model):
   @classmethod
   def FetchJson(cls, institution, session, class_id):
     class_id = str(class_id)
-    entity = super().FetchEntity(institution, session, class_id)
-    return entity.items() if entity else {}
+    entity = cls.FetchEntity(institution, session, class_id)
+    return entity if entity else {}
 
 class Closed(Attribute):
   ancestors = ["InstitutionKey","Session"]
