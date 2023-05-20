@@ -15,9 +15,9 @@ function RemoveStudent(email) {
 function RunLottery() {
   form_element = document.forms[0];
   form_element.action.value = "run lottery";
-  form_element.cid.value = "{{class_roster['class_id']}}";
+  form_element.cid.value = "{{jdata.class_roster['class_id']}}";
   var candidate_list = [];
-  {% for s in class_roster['students'] %}
+  {% for s in jdata.class_roster['students'] %}
     if (document.getElementById("selectStudent{{s['email']}}").checked) {
       candidate_list.push("{{s['email']}}");
     }
@@ -33,49 +33,49 @@ window.onload = function() {
 
   if (selectAll) {
     selectAll.onclick = function() {
-    {% for s in class_roster['students'] %}
+    {% for s in jdata.class_roster['students'] %}
       document.getElementById("selectStudent{{s['email']}}").checked = true;
     {% endfor %}
     }
   }
   if (unselectAll) {
     unselectAll.onclick = function() {
-    {% for s in class_roster['students'] %}
+    {% for s in jdata.class_roster['students'] %}
       document.getElementById("selectStudent{{s['email']}}").checked = false;
     {% endfor %}
     }
   }
 }
 </script>
-<h3>{{ class_details['name'] }} Class Roster</h3>
+<h3>{{ jdata.class_details['name'] }} Class Roster</h3>
 <table>
   <tr>
     <td><b>Schedule:</b>
-      {{ class_details['schedule'] | join(' / ', attribute='daypart') }}</td>
+      {{ jdata.class_details['schedule'] | join(' / ', attribute='daypart') }}</td>
     <td><b>Location:</b>
-      {{ class_details['schedule'] | join(' / ', attribute='location') }}</td>
+      {{ jdata.class_details['schedule'] | join(' / ', attribute='location') }}</td>
     <td><b>Instructor:</b>
-      {{ class_details['instructor'] }}</td>
+      {{ jdata.class_details['instructor'] }}</td>
   </tr>
   <tr>
     <td><b>Max Enrollment:</b>
-      {{ class_details['max_enrollment'] }}</td>
+      {{ jdata.class_details['max_enrollment'] }}</td>
     <td><b>Actual Enrollment:</b>
-      {{ class_roster['emails']|length }}</td>
+      {{ jdata.class_roster['emails']|length }}</td>
   </tr>
-  {% if 'prerequisites' in class_details
-   and class_details['prerequisites'] != [] %}
+  {% if 'prerequisites' in jdata.class_details
+   and jdata.class_details['prerequisites'] != [] %}
     <tr><td><b>Prerequisites:</b>
-      {% for p in class_details['prerequisites'] %}
+      {% for p in jdata.class_details['prerequisites'] %}
         {% for k,v in p.items() %}
           <br> - {{ k }}: {{ v }}
         {% endfor %}
       {% endfor %}</td>
     </tr>
   {% endif %}
-  {% if 'exclude_from_catalog' in class_details %}
+  {% if 'exclude_from_catalog' in jdata.class_details %}
     <tr><td><b>Exclude From Catalog:</b>
-      {{ class_details['exclude_from_catalog'] }}</td>
+      {{ jdata.class_details['exclude_from_catalog'] }}</td>
     </tr>
 {% endif %}
 </table>
@@ -89,12 +89,12 @@ window.onload = function() {
 <form method=post>
 <input type=hidden name="institution" value="{{ institution }}" />
 <input type=hidden name="session" value="{{ session }}" />
-<input type=hidden name="class_id" value = "{{ class_roster['class_id'] }}" />
+<input type=hidden name="class_id" value = "{{ jdata.class_roster['class_id'] }}" />
 <input type=hidden name="action" />
 <input type=hidden name="email" />
 <input type=hidden name="cid" />
 <input type=hidden name="candidates" />
-{% if class_roster['emails']|length > class_roster['max_enrollment'] %}
+{% if jdata.class_roster['emails']|length > jdata.class_roster['max_enrollment'] %}
 <input type="button" id="selectAll" value="Select All">
 <input type="button" id="unselectAll" value="Unselect All">
 {% endif %}
@@ -106,7 +106,7 @@ window.onload = function() {
     <th>Grade</th>
     <th>Homeroom</th>
   </tr>
-  {% for e in class_roster['students'] %}
+  {% for e in jdata.class_roster['students'] %}
     {% if e|length > 1 %}
     <tr class=highlight>
       <td><button onclick="return RemoveStudent('{{ e['email'] }}');">remove</button></td>
@@ -119,7 +119,7 @@ window.onload = function() {
   {% endfor %}
 </table>
 <br>
-{% if class_roster['emails']|length > class_roster['max_enrollment'] %}
+{% if jdata.class_roster['emails']|length > jdata.class_roster['max_enrollment'] %}
   <button onclick="return RunLottery();">Run Lottery</button>
 {% endif %}
 <br><br>

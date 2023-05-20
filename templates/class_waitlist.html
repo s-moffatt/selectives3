@@ -22,7 +22,7 @@ window.onload = function() {
 }
 
 class_waitlist = [
-{% for s in class_waitlist['students'] %}
+{% for s in jdata.class_waitlist['students'] %}
   "{{s['first']}}" + " " + "{{s['last']}}",
 {% endfor %}
 ]
@@ -38,35 +38,35 @@ function getRandomWaitlistedStudent() {
 }
 </script>
 
-<h3 style="height:3px">{{ class_details['name'] }} Class Waitlist</h3>
+<h3 style="height:3px">{{ jdata.class_details['name'] }} Class Waitlist</h3>
 <table>
   <tr>
     <td><b>Schedule:</b>
-      {{ class_details['schedule'] | join(' / ', attribute='daypart') }}</td>
+      {{ jdata.class_details['schedule'] | join(' / ', attribute='daypart') }}</td>
     <td><b>Location:</b>
-      {{ class_details['schedule'] | join(' / ', attribute='location') }}</td>
+      {{ jdata.class_details['schedule'] | join(' / ', attribute='location') }}</td>
     <td><b>Instructor:</b>
-      {{ class_details['instructor'] }}</td>
+      {{ jdata.class_details['instructor'] }}</td>
   </tr>
   <tr>
     <td><b>Max Enrollment:</b>
-      {{ class_details['max_enrollment'] }}</td>
+      {{ jdata.class_details['max_enrollment'] }}</td>
     <td><b>Waitlisted:</b>
-      {{ class_waitlist['emails']|length }}</td>
+      {{ jdata.class_waitlist['emails']|length }}</td>
   </tr>
-  {% if 'prerequisites' in class_details
-   and class_details['prerequisites'] != [] %}
+  {% if 'prerequisites' in jdata.class_details
+   and jdata.class_details['prerequisites'] != [] %}
     <tr><td><b>Prerequisites:</b>
-      {% for p in class_details['prerequisites'] %}
+      {% for p in jdata.class_details['prerequisites'] %}
         {% for k,v in p.items() %}
           <br> - {{ k }}: {{ v }}
         {% endfor %}
       {% endfor %}</td>
     </tr>
   {% endif %}
-  {% if 'exclude_from_catalog' in class_details %}
+  {% if 'exclude_from_catalog' in jdata.class_details %}
     <tr><td><b>Exclude From Catalog:</b>
-      {{ class_details['exclude_from_catalog'] }}</td>
+      {{ jdata.class_details['exclude_from_catalog'] }}</td>
     </tr>
   {% endif %}
 </table>
@@ -74,7 +74,7 @@ function getRandomWaitlistedStudent() {
 <form method=post>
 <input type=hidden name="institution" value="{{ institution }}" />
 <input type=hidden name="session" value="{{ session }}" />
-<input type=hidden name="class_id" value = "{{ class_waitlist['class_id'] }}" />
+<input type=hidden name="class_id" value = "{{ jdata.class_waitlist['class_id'] }}" />
 <input type=hidden name="action" />
 <input type=hidden name="email" />
 <input type="button" id="luckyWinner" value="Random Student">
@@ -86,7 +86,7 @@ function getRandomWaitlistedStudent() {
     <th>Grade</th>
     <th>Homeroom</th>
   </tr>
-  {% for e in class_waitlist['students'] %}
+  {% for e in jdata.class_waitlist['students'] %}
     {% if e|length > 1 %}
     <tr class=highlight>
       <td><button onclick="return RemoveStudent('{{ e['email'] }}');">remove</button></td>

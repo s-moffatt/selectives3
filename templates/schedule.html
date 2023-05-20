@@ -34,7 +34,7 @@ function RefreshSpotsAvailable() {
   var params = new FormData();
   params.append("institution", "{{ institution }}");
   params.append("session", "{{ session }}");
-  params.append("student", "{{ student['email'] }}");
+  params.append("student", "{{ jdata.student['email'] }}");
   var class_ids = Object.keys(classes_by_id);
   class_ids = JSON.stringify(class_ids);
   params.append("class_ids", class_ids);
@@ -71,7 +71,7 @@ function RefreshHoverText() {
   var params = new FormData();
   params.append("institution", "{{ institution }}");
   params.append("session", "{{ session }}");
-  params.append("student", "{{ student['email'] }}");
+  params.append("student", "{{ jdata.student['email'] }}");
   var class_ids = Object.keys(classes_by_id);
   class_ids = JSON.stringify(class_ids);
   params.append("class_ids", class_ids);
@@ -112,34 +112,34 @@ function confirmOnPageExit(e) {
 //58 : { 'name' : 'Yearbook', 'dayparts': ['Thurs B',]},
 //50 : { 'name' : 'Dance', 'dayparts': ['Thurs B','Fri B',]},
 //};
-{% if html_desc == 'htmlNo' %}
+{% if jdata.html_desc == 'htmlNo' %}
 classes_by_id = {
-{% for class_id in classes_by_id -%}
+{% for class_id in jdata.classes_by_id -%}
   {{ class_id }} : {
-    'name' : '{{ classes_by_id[class_id]['name'] }}',
-    'dayparts': [{% for s in classes_by_id[class_id]['schedule'] -%}
+    'name' : '{{ jdata.classes_by_id[class_id]['name'] }}',
+    'dayparts': [{% for s in jdata.classes_by_id[class_id]['schedule'] -%}
                     '{{ s['daypart'] }}',
                  {%- endfor %}],
-    'max_enrollment': '{{ classes_by_id[class_id]['max_enrollment'] }}',
-    'instructor': '{{ classes_by_id[class_id]['instructor'] }}',
-    'fitness': '{{ classes_by_id[class_id]['fitness'] }}',
-    'donation': '{{ classes_by_id[class_id]['donation']}}'
+    'max_enrollment': '{{ jdata.classes_by_id[class_id]['max_enrollment'] }}',
+    'instructor': '{{ jdata.classes_by_id[class_id]['instructor'] }}',
+    'fitness': '{{ jdata.classes_by_id[class_id]['fitness'] }}',
+    'donation': '{{ jdata.classes_by_id[class_id]['donation']}}'
   },
 {%- endfor %}
 };
 {% else %}
 classes_by_id = {
-{% for class_id in classes_by_id -%}
+{% for class_id in jdata.classes_by_id -%}
   {{ class_id }} : {
-    'name' : '{{ classes_by_id[class_id]['name'] }}',
-    'dayparts': [{% for s in classes_by_id[class_id]['schedule'] -%}
+    'name' : '{{ jdata.classes_by_id[class_id]['name'] }}',
+    'dayparts': [{% for s in jdata.classes_by_id[class_id]['schedule'] -%}
                     '{{ s['daypart'] }}',
                  {%- endfor %}],
-    'max_enrollment': '{{ classes_by_id[class_id]['max_enrollment']}}',
-    'instructor': '{{ classes_by_id[class_id]['instructor']}}',
-    'description': '{{ classes_by_id[class_id]['description']|safe}}',
-    'fitness': '{{ classes_by_id[class_id]['fitness'] }}',
-    'donation': '{{ classes_by_id[class_id]['donation']}}'
+    'max_enrollment': '{{ jdata.classes_by_id[class_id]['max_enrollment']}}',
+    'instructor': '{{ jdata.classes_by_id[class_id]['instructor']}}',
+    'description': '{{ jdata.classes_by_id[class_id]['description']|safe}}',
+    'fitness': '{{ jdata.classes_by_id[class_id]['fitness'] }}',
+    'donation': '{{ jdata.classes_by_id[class_id]['donation']}}'
   },
 {%- endfor %}
 };
@@ -238,7 +238,7 @@ function AddClassToBackend(class_id, loading_gif) {
   var params = new FormData();
   params.append("institution", "{{ institution }}");
   params.append("session", "{{ session }}");
-  params.append("student", "{{ student['email'] }}");
+  params.append("student", "{{ jdata.student['email'] }}");
   params.append("class_id", class_id);
   params.append("action", "add");
   request.send(params);
@@ -265,7 +265,7 @@ function DeleteClassFromBackend(class_id, loading_gif) {
   var params = new FormData();
   params.append("institution", "{{ institution }}");
   params.append("session", "{{ session }}");
-  params.append("student", "{{ student['email'] }}");
+  params.append("student", "{{ jdata.student['email'] }}");
   params.append("class_id", class_id);
   params.append("action", "del");
   request.send(params);
@@ -380,18 +380,18 @@ function createSidePanel(class_id) {
 
 <div id="register-panel">
   <div class="profile-user">
-    <h2 class="profile-data">{{ student['first'] + ' ' + student['last'] }}</h2>
-    <h3 class="profile-data">Homeroom: {{ student['current_homeroom'] }}</h3>
-    <h3 class="profile-data">Grade: {{ student['current_grade'] }}</h3>
+    <h2 class="profile-data">{{ jdata.student['first'] + ' ' + jdata.student['last'] }}</h2>
+    <h3 class="profile-data">Homeroom: {{ jdata.student['current_homeroom'] }}</h3>
+    <h3 class="profile-data">Grade: {{ jdata.student['current_grade'] }}</h3>
   </div>
 
 <form method=post>
 <input type=hidden name="institution" value="{{ institution }}" />
 <input type=hidden name="session" value="{{ session }}" />
-<input type=hidden name="student" value="{{ student['email'] }}" />
+<input type=hidden name="student" value="{{ jdata.student['email'] }}" />
 <input type=hidden name="class_id" />
 <table>
-  {% for row in dayparts_ordered %}
+  {% for row in jdata.dayparts_ordered %}
   <tr>
     {% for daypart in row %}
       <td class="schedHeader">{{ daypart }}</td>
@@ -401,7 +401,7 @@ function createSidePanel(class_id) {
     {% for daypart in row %}
       <td class="schedTableData">
         <ol id="{{daypart}}" class="schedOrderedList">
-        {% for c in classes_by_daypart[daypart] %}
+        {% for c in jdata.classes_by_daypart[daypart] %}
           <li class="schedListItem" id="{{daypart}}_{{c['id']}}"
               title="{{c['hover_text']}}"
               onclick="OnClickHandler('{{daypart}}', {{c['id']}} );"
@@ -426,7 +426,7 @@ function createSidePanel(class_id) {
 </div>
 
 <script>
-SetScheduleInGui({{ schedule|safe }});
+SetScheduleInGui({{ jdata.schedule|safe }});
 RefreshData();
 </script>
 {% endblock %}

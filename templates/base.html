@@ -9,7 +9,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">     
     {% include '_script_head.html' %}
   </head>
-  <body style="display: none">
+  <body id="body-user">
+    <div id="body-user-inner" redirect="{{ redirect }}" uid="{{ uid }}">
     <table width=100%><tr>
       <td align=left><h1>
         {# TODO fix this hack:
@@ -47,10 +48,9 @@
       </td>
     </tr></table>
     <hr>
-    <div id="block_body">
-      <div id="block_body_inner" redirect="{{ redirect }}" uid="{{ uid }}">
+    <div id="block_body">      
         {% block body %} {% endblock %}
-      </div>
+    </div>
     </div>
     {% include '_script_body.html' %}
   </body>

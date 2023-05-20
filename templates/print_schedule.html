@@ -7,20 +7,19 @@
   </head>
   <body>
 
-{% if not student %}
+{% if not data.student %}
 Student not found! This error should never happen. Please inform the selectives team. Thanks!
 {% else %}
 <h2 style="margin-bottom:0">
   Selectives Schedule - {{session}}<br>
-  {{ student['first'] + ' ' + student['last'] }}
+  {{ data.student['first'] + ' ' + data.student['last'] }}
 </h2>
 <h3 style="margin-bottom:4px; margin-top:4px">
-  Homeroom: {{ student['current_homeroom'] }}<br>
-  Grade: {{ student['current_grade'] }}<br>
+  Homeroom: {{ data.student['current_homeroom'] }}<br>
+  Grade: {{ data.student['current_grade'] }}<br>
 </h3>
-
 <table>
-  {% for row in dayparts_ordered %}
+  {% for row in data.dayparts_ordered %}
   <tr>
     <td class="schedPostRegRowHeader"></td>
     {% for daypart in row %}
@@ -36,15 +35,15 @@ Student not found! This error should never happen. Please inform the selectives 
     </td>
     {% for daypart in row %}
       <td class="schedPostRegItem">
-      {% if schedule_by_daypart[daypart] %}
-        {{ schedule_by_daypart[daypart]['name'] }}<br>
-        {% for s in schedule_by_daypart[daypart]['schedule'] %}
+      {% if data.schedule_by_daypart[daypart] %}
+        {{ data.schedule_by_daypart[daypart]['name'] }}<br>
+        {% for s in data.schedule_by_daypart[daypart]['schedule'] %}
           {% if s['daypart'] == daypart %}
           {{ s['location'] }}<br>
           {% endif %}
         {% endfor %}
-        {{ schedule_by_daypart[daypart]['instructor'] }}<br>
-        {{ schedule_by_daypart[daypart]['donation'] }}<br>
+        {{ data.schedule_by_daypart[daypart]['instructor'] }}<br>
+        {{ data.schedule_by_daypart[daypart]['donation'] }}<br>
       {% endif %}
       </td>
     {% endfor %}

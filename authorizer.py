@@ -1,7 +1,7 @@
 import logic
 import models
 
-from flask import request, render_template, make_response, current_app, g as app_ctx
+from flask import request, redirect, render_template, make_response, current_app, g as app_ctx
 import datetime
 import time
 import urllib.parse
@@ -125,7 +125,7 @@ class Authorizer(object):
       return False
     if self.IsGlobalAdmin():
       return True
-    institution = request.get("institution")
+    institution = request.args.get("institution")
     if not institution:
       return False
     if self.email in models.Admin.FetchAll(institution):
@@ -181,9 +181,9 @@ class Authorizer(object):
                                self.email)
 
   def _VerifyServingSession(self, institution, session):
-    serving_session = models.ServingSession.FetchEntity(institution)
+    serving_session = models.Session.ServingSession(institution)
     current_app.logger.info("currently serving session = %s" % serving_session)
-    if serving_session.session_name == session:
+    if serving_session and serving_session[0].key.id_or_name == session:
       return True
     current_app.logger.error("serving session doesn't match")
     return False
@@ -266,13 +266,15 @@ class Authorizer(object):
     if len(institution_list) > 0:
       institution = institution_list[0]
       current_app.logger.info("Authorizer.Redirect: Redirecting %s to /institution", self.email)
-      return "/institution?%s" % urllib.urlencode(
+      return "/institution?%s" % urllib.parse.urlencode(
           {'institution': institution})
     # are they a student with a serving session?
-    serving_sessions = models.ServingSession.FetchAllEntities()
+    serving_sessions = models.Session.ServingSession()
+    current_app.logger.info(f"serving_sessions={serving_sessions}")
+
     for ss in serving_sessions:
-      institution = ss.institution_name
-      session = ss.session_name
+      institution = ss.key.parent.id_or_name
+      session = ss.key.id_or_name
       verified = self._VerifyStudent(institution,
                                      session,
                                      self.email)
@@ -284,8 +286,8 @@ class Authorizer(object):
              'session': session}))
     # are they a teacher with a serving session?
     for ss in serving_sessions:
-      institution = ss.institution_name
-      session = ss.session_name
+      institution = ss.key.parent.id_or_name
+      session = ss.key.id_or_name
       start_page = "teacher/take_attendance"
       verified = self._VerifyTeacher(institution,
                                      session,
@@ -304,8 +306,9 @@ class Authorizer(object):
            'session': session})      
       if request.url==path:
         return OK,200
-      resp = make_response(render_template('base.html', redirect=path))
-      current_app.logger.info("Setting Selectives-Redirect Header to: %s", path)
+      return redirect(path)
+      resp = make_response(render_template('base.html', uid=self.uid, redirect=path))
+      current_app.logger.info("Setting Temporary Selectives-Redirect Header to: %s", path)
       resp.headers['Selectives-Redirect'] = path
       return resp
 

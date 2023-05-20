@@ -1,4 +1,4 @@
-from flask import render_template, redirect, request, current_app, jsonify, abort
+from flask import render_template, redirect, request, current_app
 from flask.views import MethodView
 import urllib.parse
 

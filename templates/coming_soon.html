@@ -2,9 +2,8 @@
 {% block session_body %}
 
 <div>
-{{ data.welcome_msg|safe }}
+{{ data.closed_msg|safe }}
 <input type=hidden name="institution" value="{{ institution }}" />
 <input type=hidden name="session" value="{{ session }}" />
 </div>
-
 {% endblock %}

@@ -11,6 +11,7 @@
     {% include '_script_head.html' %}
   </head>
   <body id="body-user">
+    <div id="body-user-inner" redirect="{{ redirect }}" uid="{{ uid }}">
     <div id="header-user">
       <div id="logo-user">
         <img src="{{ url_for('static', filename='/images/DiscoveryMascot_Logo_Tiny.jpg') }}" alt="DCS phoenix logo" width="50px">
@@ -20,9 +21,8 @@
       {% include '_user.html' %}
     </div>
     <div id="block_body">
-      <div id="block_body_inner" redirect="{{ redirect }}" uid="{{ uid }}">
         {% block body %} {% endblock %}
-      </div>
+    </div>
     </div>
     {% include '_script_body.html' %}
   </body>
