@@ -49,9 +49,9 @@ class Model():
     return Client.key(*path, parent=parent_key, **kwargs)  
 
   @classmethod
-  def Store(cls, *path_args, data={}, **kwargs):
+  def Store(cls, *path_args, data={}, exclude_from_indexes=(), **kwargs):
     current_app.logger.info("%s.Store: %s", cls.__name__, str(path_args))
-    entity = datastore.Entity(key=cls.key(*path_args, **kwargs))
+    entity = datastore.Entity(key=cls.key(*path_args, **kwargs),exclude_from_indexes=exclude_from_indexes)
     data.update({'date_time': datetime.now()})
     if data:
       entity.update(data)
@@ -135,7 +135,8 @@ class YamlJsonAttribute(Model):
     current_app.logger.info(f"validated data to be posted={jdata}")
     return super().Store(*nargs, data={
       "data" : data if data else cls.default,
-      "jdata": jdata})
+      "jdata": jdata},
+      exclude_from_indexes=('data','jdata'))
 
   @classmethod
   def Fetch(cls, *args):
