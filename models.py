@@ -109,7 +109,8 @@ class Attribute(Model):
     nargs=list(args)
     data = nargs.pop()
     return super().Store(*nargs, data={
-      "data": data if data else cls.default})
+      "data": data if data else cls.default}
+      , exclude_from_indexes=('data',))
 
   @classmethod
   def Fetch(cls, *args):
@@ -385,7 +386,7 @@ class ClassRoster(Model):
       "student_emails" : student_emails,
       "jclass_obj"     : class_obj}
     #current_app.logger.info('saving class_roster = %s' % roster)
-    super().Store(institution, session, class_id, data=roster)
+    super().Store(institution, session, class_id, data=roster, exclude_from_indexes=('student_emails','jclass_obj'))
 
 #    # Appengine datetimes are stored in UTC, so by around 4pm the date is wrong.
 #    # This is a kludgy way to get PST. It doesn't handle daylight savings time,
