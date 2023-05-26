@@ -53,7 +53,7 @@ def getFitnessErrorMsgs(schedule_by_dp):
     err_msgs.append("Too many PE's, maximum is two.")
   if num_fitness < 2:
     err_msgs.append("At least two PE or PE alternatives required.")
-  if num_fitness > 3:
+  if num_fitness > 2:
     err_msgs.append("Too many PE or PE alternatives, maximum is three.")
   if num_PE_MT > 1 or num_PE_TF > 1:
     err_msgs.append("Not allowed to have two PE's on Mon/Tues or Thurs/Fri.")
