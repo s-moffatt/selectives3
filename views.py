@@ -188,6 +188,13 @@ def WelcomeSetupSave(cls, institution, session, auth):
   return data
 
 @classmethod
+def WelcomeSetupGetData(cls, institution, session, auth):
+  data = cls.model.Fetch()
+  if not data and cls.sample:
+    with open(cls.sample) as x: data = x.read()
+  return data
+
+@classmethod
 def RostersSave(cls, institution, session, auth):
   rosters = request.form.get("data")
   if not rosters:
@@ -867,6 +874,7 @@ Views = {
     "model"    : models.Welcome,
     "sample"   : "samples/welcome.html",
     "save"     : WelcomeSetupSave,
+    "get_data" : WelcomeSetupGetData,
     "get_jdata": getNone,
   },
   "Closed": {
