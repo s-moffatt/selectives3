@@ -28,7 +28,7 @@ function RefreshSpotsAvailable() {
       WriteSpotsAvailableToGui(result);
       // TODO: How fast can we refresh before Google imposes
       // limits and starts demanding money?
-      //ResetRefreshDataTimer(7);
+      ResetRefreshDataTimer(7);
     }
   }
   var params = new FormData();
@@ -65,7 +65,7 @@ function RefreshHoverText() {
       WriteHoverTextToGui(hov_texts);
       // TODO: How fast can we refresh before Google imposes
       // limits and starts demanding money?
-      //ResetRefreshDataTimer(7);
+      ResetRefreshDataTimer(7);
     }
   }
   var params = new FormData();
