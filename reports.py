@@ -22,20 +22,13 @@ def get_param(k,*args):
   return v
 
 def listOrder(c):
-  if 'instructor' in c:
-    return (c['name'],
-            c['dayorder'],
-            c['instructor'])
-  else:
-    return (c['name'],
-            c['dayorder'])
+  return (c['name'],
+          c['dayorder'],
+          c['instructor'] if 'instructor' in c else '')
 
 def alphaOrder(c):
-  if 'instructor' in c:
-    return (c['name'],
-            c['instructor'])
-  else:
-    return (c['name'])
+  return (c['name'],
+          c['instructor'] if 'instructor' in c else '')
 
 def removeTaken(taken, students):
   return [s for s in students if s['email'] not in (taken or [])]
@@ -583,7 +576,7 @@ def GetErrorRegistration(cls, institution, session, auth):
         continue
       sched_obj = models.Schedule.FetchEntity(institution, session,
                                             s['email'].lower())
-      current_app.logger.info(f"sched_obj=%s" % sched_obj.get("class_ids"))
+      #current_app.logger.info(f"sched_obj=%s" % sched_obj.get("class_ids"))
       if not sched_obj or not sched_obj.get("class_ids"):
         err_list.append((['Missing schedule'], s, {}))
         continue # Entire schedule is missing,
@@ -662,7 +655,7 @@ def _getSchedule(institution, session, auth, html=False):
         classes_by_id[str(c['id'])] = c
         c['description'] = logic.GetHTMLDescription(institution, session, c)
   config = models.Config.Fetch(institution, session)
-  current_app.logger.info(f"student={auth.student_entity}")
+  #current_app.logger.info(f"student={auth.student_entity}")
   return {
     'student': auth.student_entity,
     'dayparts': dayparts,
