@@ -65,6 +65,18 @@
     return(row);
   }
 
+  function createTakeAttendanceLink(c,date_selected) {
+    var a = document.createElement("a");
+    var q = new URLSearchParams(window.location.search);
+    var qq = new URLSearchParams();
+    qq.append('institution', q.get('institution'));
+    qq.append('session', q.get('session'));
+    qq.append('selected_date', date_selected);
+    qq.append('selected_cid', c.id);
+    a.innerHTML=c.name;
+    a.href="/teacher/take_attendance?"+qq.toString();
+    return(a);
+  }
   function createAttendenceSummaryTd(c,date_selected,absences) {    
     let roster, d, absent, present, missing;
     let a = document.createElement("td");
@@ -115,6 +127,7 @@
     let absences_div  = document.getElementById("absences");
     let classes_div   = document.getElementById("classes");
     let absences = {};
+    let links;
 
     if (!daypart_selected.match("select a daypart")) { 
       // create classes table
@@ -147,7 +160,9 @@
         buttons: [
             'copy', 'excel', 'csvHtml5'
         ]
-    });
+      });
+      links=Object.fromEntries(js_classes.map(x => [x.name, createTakeAttendanceLink(x,date_selected)]));
+      $('#'+id+'.table tbody tr :first-child').each(function(){ $(this).html(links[$(this).text()])})
 
       // create absences table
       id = "absence-view-absences-table";
