@@ -1,0 +1,282 @@
+{% if data.user_type == 'Admin' %}
+  {% extends 'menu.html' %}
+{% elif data.user_type == 'Teacher' %}
+  {% extends 'menu_teacher.html' %}
+{% endif %}
+{% block session_body %}
+
+<script>
+  const js_classes    = {{ data.classes|safe }};
+  const js_dayparts = {{ data.dayparts|safe }};
+  const js_selected_daypart = "{{ data.selected_daypart|safe }}";
+  const js_selected_date = "{{ data.selected_date|safe }}";
+
+  // https://stackoverflow.com/questions/679915/how-do-i-test-for-an-empty-javascript-object
+  function isEmptyObject(js_roster) {
+    return (Object.keys(js_roster).length === 0 && js_roster.constructor === Object);
+  }
+  
+  function fillDate() {
+    let date_dropdown = document.getElementById("dateInput");
+    {% if data.selected_date %}
+      date_dropdown.value = "{{data.selected_date}}";
+    {% else %}
+      let today = new Date(Date.now());
+      let todayISO = today.getFullYear().toString() + '-' +
+                     (today.getMonth()+1).toString().padStart(2, '0') + '-' +
+                     (today.getDate()).toString().padStart(2, '0');
+      date_dropdown.value = todayISO;
+    {% endif %}
+  }
+
+  function fillDaypartDropDown() {
+    const weekday = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    let dateobj = new Date(document.getElementById("dateInput").value);
+    let day = weekday[dateobj.getUTCDay()];
+
+
+    let daypart_dd = document.getElementById("daypartDropDown");
+    let opt = document.createElement("option");
+    opt.disabled = "disabled";
+    opt.selected = "selected";
+    opt.hidden = "hidden";
+    opt.text = "-- select a daypart --"
+    daypart_dd.add(opt);
+    js_dayparts.forEach(function(v){
+      if (v.name.match(day)){
+        opt = document.createElement("option");
+        opt.text = v.name;
+        if (v.name == js_selected_daypart) {
+          opt.selected = "selected";
+        }
+        daypart_dd.add(opt);
+      }
+    });
+  }
+
+  function createRow(td_th,arr) {
+    let row = document.createElement("tr");    
+    let e;
+    arr.forEach(v=>{
+      e = document.createElement(td_th);
+      e.innerHTML = v;
+      row.append(e);
+    })
+    return(row);
+  }
+
+  function createAttendenceSummaryTd(c,date_selected,absences) {    
+    let roster, d, absent, present, missing;
+    let a = document.createElement("td");
+    
+    a.title = "";  
+    roster = Object.fromEntries(c.roster.map(x => [x.email, x]));   
+    if ("attendance" in c && date_selected in c.attendance) {
+      d = c.attendance[date_selected];
+      c.roster.forEach(r => {
+        if (d.absent.includes(r.email)) {
+          roster[r.email]["attendance"] = "absent";
+          absences[r.email] = roster[r.email];
+          absences[r.email]["class"] = c.name;
+          absences[r.email]["location"] = c.location;
+        } else if (d.present.includes(r.email)) {
+          roster[r.email]["attendance"] = "present"; 
+        } else {
+          roster[r.email]["attendance"] = "missing";
+        }
+      });
+      absent  = Object.entries(roster).filter(([k,v]) => v.attendance=="absent" ).map(([k,v]) => (v.first+" "+v.last+" (rm"+v.current_homeroom+")"));
+      present = Object.entries(roster).filter(([k,v]) => v.attendance=="present").map(([k,v]) => (v.first+" "+v.last+" (rm"+v.current_homeroom+")"));
+      missing = Object.entries(roster).filter(([k,v]) => v.attendance=="missing").map(([k,v]) => (v.first+" "+v.last+" (rm"+v.current_homeroom+")"));
+      a.innerHTML = present.length + "/" + Object.keys(roster).length
+      + (absent.length ? (" ["+absent.length+" absent]") : "")
+      + (missing.length ? (" ["+missing.length+" missing]") : "")
+      + (d.note ? ( " ["+d.note+"]") : "");
+      if (absent.length) {
+        a.title += "Absent:\n"+absent.join("\n")+"\n\n";
+      }
+      if (missing.length) {
+        a.className += "danger";
+        a.title += "Missing:\n"+missing.join("\n");
+      }
+    } else {
+      a.innerHTML = "0/"+Object.keys(roster).length + " [Attendance not taken]";
+      a.className += "danger";
+    }
+    return(a);
+  }
+
+  function displayAbsences() {
+    let date_dropdown = document.getElementById("dateInput");
+    let date_selected = date_dropdown.value;
+    let daypart_dd    = document.getElementById("daypartDropDown");
+    let daypart_selected = daypart_dd.value;
+    let id, h, h_div, table, thead, tbody, row, header, none_div;
+    let absences_div  = document.getElementById("absences");
+    let classes_div   = document.getElementById("classes");
+    let absences = {};
+
+    if (!daypart_selected.match("select a daypart")) { 
+      // create classes table
+      id = "absence-view-classes-table";
+      h = document.createElement("h1");
+      h.innerHTML = "Attendance Status";
+      //h_div = document.createElement("div");
+      //h_div.style.display = "flex";
+      //h_div.appendChild(h);
+      //h_div.appendChild(createDownloadCSVButton('a','#'+id+'.table','attendance_status.csv'));
+      classes_div.replaceChildren(h);
+
+      table = document.createElement("table");
+      table.className += "table table-striped";
+      table.id = id;
+
+      thead = document.createElement("thead");
+      row = createRow("th",["Class","Instructor","Location","Attendance"]);
+      thead.appendChild(row);
+      table.appendChild(thead);
+
+      tbody = document.createElement("tbody");
+      js_classes.forEach(c => {
+        if (c.roster.length>0) {
+          row = createRow("td",[c.name,c.instructor,c.location]);
+          row.appendChild(createAttendenceSummaryTd(c,date_selected,absences));
+          tbody.appendChild(row);
+        }
+      });
+      table.appendChild(tbody);
+      classes_div.appendChild(table);
+      $('#'+id+'.table').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'excel', 'csvHtml5'
+        ]
+    });
+
+
+      // create absences table
+      id = "absence-view-absences-table";
+      h = document.createElement("h1");
+      h.innerHTML = "Absence List";
+      h_div = document.createElement("div");
+      h_div.style.display = "flex";
+      h_div.appendChild(h);
+      h_div.appendChild(createDownloadCSVButton('a','#'+id+'.table','absence_list.csv'));
+      absences_div.replaceChildren(h_div);
+
+      table = document.createElement("table");
+      table.className += "table table-striped";
+      table.id = id;
+
+      thead = document.createElement("thead");
+      row = createRow("th",["First","Last","Homeroom","Grade","Class","Location"]);
+      thead.appendChild(row);
+      table.appendChild(thead);
+
+      tbody = document.createElement("tbody");
+      Object.values(absences).forEach(a => {
+        row = createRow("td",[a.first,a.last,a.current_homeroom,a.current_grade,a.class,a.location]);
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+      absences_div.appendChild(table);
+      $('#'+id+'.table').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'excel', 'csvHtml5'
+        ]
+    });
+
+    }
+  }
+
+  function sendGet(params) {
+    let form = document.createElement("form");
+    form.setAttribute("method", "get");
+    for (let key in params) {
+      if (params.hasOwnProperty(key)) {
+        let hiddenField = document.createElement("input");
+        hiddenField.setAttribute("type", "hidden");
+        hiddenField.setAttribute("name", key);
+        hiddenField.setAttribute("value", params[key]);
+        form.appendChild(hiddenField);
+      }
+    }
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  window.onload = function() {
+    let date_dropdown = document.getElementById("dateInput");
+    let daypart_dd    = document.getElementById("daypartDropDown");
+    let absences_div  = document.getElementById("absences");
+    let classes_div   = document.getElementById("classes");
+  
+    fillDate();
+    fillDaypartDropDown();
+    displayAbsences();;
+  
+    date_dropdown.onchange = function() {
+      if (date_dropdown.value) {
+        sendGet({"institution" : "{{institution}}",
+                 "session" : "{{session}}",
+                 "selected_date" : date_dropdown.value});
+      }
+    }
+    daypart_dd.onchange = function() {
+      if (daypart_dd.value) {
+        sendGet({"institution" : "{{institution}}",
+                "session" : "{{session}}",
+                 "selected_date" : date_dropdown.value,
+                 "selected_daypart": daypart_dd.value});  
+      }
+    }
+  }
+
+function downloadCSV(csv, filename) {
+  var csvFile;
+  var downloadLink;
+  csvFile = new Blob([csv], {type: "text/csv"});
+  downloadLink = document.createElement("a");
+  downloadLink.download = filename;
+  downloadLink.href = window.URL.createObjectURL(csvFile);
+  downloadLink.style.display = "none";
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+}
+
+function exportTableToCSV(tableSelector,filename) {
+  var csv = [];
+  var rows = document.querySelectorAll(tableSelector+" tr");
+  for (var i = 0; i < rows.length; i++) {
+    var row = [], cols = rows[i].querySelectorAll("td, th");
+    for (var j = 0; j < cols.length; j++) {
+      row.push(cols[j].innerText);   
+    }     
+    csv.push(row.join(","));        
+  }
+  downloadCSV(csv.join("\n"), filename);
+}
+
+function createDownloadCSVButton(e,tableSelector,filename) {
+  var button = document.createElement(e);
+  button.className += "fa fa-download";
+  button.onclick = function(){ return exportTableToCSV(tableSelector,filename)};
+  return(button);
+}
+
+</script>
+
+<h3 id="myHeader" style="margin-top:4px; margin-bottom:4px">View Absence</h3>
+<div>
+  <div id="instructions" style="margin-top:5px; margin-bottom:7px">Newer data may be available. Refresh the page to see the most up-to-date attendance as this page does not refresh automatically.</div>
+  <div id="attend-date"><input type="date" id="dateInput" required></div>
+  <div class="attend-view-by">
+    <label for="daypartDropDown">Daypart</label>
+    <select id="daypartDropDown"></select>
+  </div>
+  <div id="classes"></div>
+  <div id="absences"></div>
+</div>
+
+{% endblock %}

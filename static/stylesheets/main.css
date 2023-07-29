@@ -596,3 +596,20 @@ table.attendanceLegend {
   border: 1px solid black;
   border-collapse: collapse;
 }
+
+/***** absence *****/
+.danger {
+  background-color: pink;
+}
+#absence-view-classes-table, #absence-view-absences-table {
+  border-collapse: collapse;
+  margin-top: 25px;
+}
+#absence-view-classes-table th, #absence-view-classes-table td, #absence-view-absences-table th, #absence-view-absences-table td {
+  padding: 2px 8px 0;
+  border: 1px solid #ccc;
+  border-collapse: collapse;
+}
+#absence-view-classes-table tbody tr:nth-child(odd), #absence-view-absences-table tbody tr:nth-child(odd) {
+  background-color: #f1f1f1;;
+}
