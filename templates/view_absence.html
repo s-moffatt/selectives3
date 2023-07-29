@@ -121,10 +121,6 @@
       id = "absence-view-classes-table";
       h = document.createElement("h1");
       h.innerHTML = "Attendance Status";
-      //h_div = document.createElement("div");
-      //h_div.style.display = "flex";
-      //h_div.appendChild(h);
-      //h_div.appendChild(createDownloadCSVButton('a','#'+id+'.table','attendance_status.csv'));
       classes_div.replaceChildren(h);
 
       table = document.createElement("table");
@@ -157,11 +153,7 @@
       id = "absence-view-absences-table";
       h = document.createElement("h1");
       h.innerHTML = "Absence List";
-      h_div = document.createElement("div");
-      h_div.style.display = "flex";
-      h_div.appendChild(h);
-      h_div.appendChild(createDownloadCSVButton('a','#'+id+'.table','absence_list.csv'));
-      absences_div.replaceChildren(h_div);
+      absences_div.replaceChildren(h);
 
       table = document.createElement("table");
       table.className += "table table-striped";
