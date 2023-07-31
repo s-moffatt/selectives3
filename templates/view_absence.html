@@ -156,6 +156,7 @@
       table.appendChild(tbody);
       classes_div.appendChild(table);
       $('#'+id+'.table').DataTable({
+        bPaginate: false,
         dom: 'Bfrtip',
         buttons: [
             'copy', 'excel', 'csvHtml5'
@@ -187,6 +188,7 @@
       table.appendChild(tbody);
       absences_div.appendChild(table);
       $('#'+id+'.table').DataTable({
+        bPaginate: false,
         dom: 'Bfrtip',
         buttons: [
             'copy', 'excel', 'csvHtml5'
@@ -249,8 +251,8 @@
     <label for="daypartDropDown">Daypart</label>
     <select id="daypartDropDown"></select>
   </div>
-  <div id="classes"></div>
   <div id="absences"></div>
+  <div id="classes"></div>
 </div>
 
 {% endblock %}
