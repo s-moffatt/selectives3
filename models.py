@@ -225,7 +225,26 @@ class Classes(YamlJsonAttribute):
 
   @classmethod
   def Store(cls, institution, session, classes):
-    super().Store(institution, session, classes)
+    jdata = yaml.safe_load(classes) if classes else cls.defaultJson
+    #current_app.logger.info(f"validated data to be posted={jdata}")
+
+    centities = []
+    for c in jdata:
+      centity = datastore.Entity(exclude_from_indexes=['description'])
+      centity.update(c)
+      centities.append(centity)
+
+      roster = ClassRoster.FetchEntity(institution, session, c['id'])
+      if not roster or c != roster['class_details']:
+        ClassRoster.Store(institution, session, c, ",".join(roster['emails']) if roster else '')
+
+    entity = datastore.Entity(key=cls.key(institution, session),exclude_from_indexes=('data','jdata'))
+    if classes:
+      entity.update({
+        'date_time': datetime.now(),
+        "data" : classes if classes else cls.default,
+        "jdata": centities})
+    Client.put(entity)
     # ClassRoster saves a copy of class info in its own jclass_obj
     # (for efficiency?). When Classes changes, make sure
     # ClassRoster's jclass_obj stays in sync by calling
@@ -241,11 +260,6 @@ class Classes(YamlJsonAttribute):
     # class is created (because, of course, initially jclass_obj != c),
     # fixes the bug where remaining spots on the schedule page
     # initializes incorrectly to 0 instead of max_enrollment.    
-    classes = yaml.safe_load(classes)
-    for c in classes:
-      roster = ClassRoster.FetchEntity(institution, session, c['id'])
-      if not roster or c != roster['class_details']:
-        ClassRoster.Store(institution, session, c, ",".join(roster['emails']) if roster else '')
 
 class Students(YamlJsonAttribute):
   """List of students in yaml and json format."""
@@ -382,12 +396,16 @@ class ClassRoster(Model):
     student_emails = student_emails.strip()
     if len(student_emails) and student_emails[-1] == ',':
       student_emails = student_emails[:-1]
-    roster = {
-      "student_emails" : student_emails,
-      "jclass_obj"     : class_obj}
-    #current_app.logger.info('saving class_roster = %s' % roster)
-    super().Store(institution, session, class_id, data=roster, exclude_from_indexes=('student_emails','jclass_obj'))
 
+    centity = datastore.Entity(exclude_from_indexes=['description'])
+    centity.update(class_obj)
+
+    entity = datastore.Entity(key=cls.key(institution, session, class_id),exclude_from_indexes=('student_emails','jclass_obj'))
+    entity.update({
+      'date_time': datetime.now(),
+      "student_emails" : student_emails,
+      "jclass_obj"     : centity})
+    Client.put(entity)
 #    # Appengine datetimes are stored in UTC, so by around 4pm the date is wrong.
 #    # This is a kludgy way to get PST. It doesn't handle daylight savings time,
 #    # but off by one hour is better than off by eight.
