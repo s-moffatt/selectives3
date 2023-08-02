@@ -183,6 +183,35 @@ window.onload = function() {
           student_list.push(curr_student);
         {% endfor %}
 
+        // Add instructors from Classes, if any
+        {% if c.get('instructor_attendance') != None %}
+
+          // insert a blank line of separation
+          curr_student = {};
+          curr_student.first = '';
+          curr_student.last = '';
+          curr_student.rm = '';
+          curr_student.grade = '';
+          student_list.push(curr_student);
+
+          curr_student = {};
+          curr_student.first = 'Instructor / Assistant';
+          curr_student.last = '';
+          curr_student.rm = '';
+          curr_student.grade = '';
+          student_list.push(curr_student);
+
+          {% for p in c['instructor_attendance'] %}
+            curr_student = {};
+            curr_student.first = '{{p.first}}';
+            curr_student.last = '{{p.last}}';
+            curr_student.rm = '{{p.homeroom}}' || '--';
+            curr_student.grade = '{{p.grade}}' || '--';
+            student_list.push(curr_student);
+          {% endfor %}
+        {% endif %}
+
+
         // Extra lines for parent helpers or write-in students
         if (student_list.length > 0) {
           for (var i=0; i<intExtraLines; i++) {

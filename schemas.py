@@ -27,7 +27,12 @@ def Classes():
         "  owners:\n"
         "    - OPTIONAL\n"
         "  open_enrollment: OPTIONAL\n"
-        "  fitness: OPTIONAL\n")
+        "  fitness: OPTIONAL\n"
+        "  instructor_attendance:\n"
+        "    - first: OPTIONAL\n"
+        "      last: OPTIONAL\n"
+        "      homeroom: OPTIONAL\n"
+        "      grade: OPTIONAL\n")
 
 def Students():
   return yayv.ByExample(

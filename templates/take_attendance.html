@@ -18,6 +18,7 @@
 // my_roster is a python dictionary passed here as a jinja string
 // For convenience, save as JavaScript dictionary, global to this script.
 const js_roster = {{ jdata.my_roster|safe }};
+const js_selected_class = {{ jdata.selected_class|safe }};
 
 function attendanceTaken() {
   return 'submitted_by' in js_roster;
@@ -87,6 +88,7 @@ function fillClassesDropDown() {
 function buildRosterTable() {
   let table = document.getElementById("roster_table")
   let tbody = document.createElement("tbody");
+  let numStudents = 0;
 
   js_roster['students'].forEach(function(student, i) {
     let row = document.createElement("tr");
@@ -131,7 +133,58 @@ function buildRosterTable() {
     row.appendChild(absent_td);
 
     tbody.appendChild(row);
+    numStudents += 1;
   });
+
+  if ('instructor_attendance' in js_selected_class) {
+    tbody.appendChild(document.createElement("hr"));
+  
+    js_selected_class['instructor_attendance'].forEach(function(parent, i) {
+      i += numStudents;
+      let row = document.createElement("tr");
+
+      let name_td = document.createElement("td");
+      name_td.appendChild(
+        document.createTextNode(parent['first'] + " " + parent['last']));
+      row.appendChild(name_td);
+
+      let gr_td = document.createElement("td");
+      gr_td.appendChild(document.createTextNode(parent['grade'] || '--'));
+      row.appendChild(gr_td);
+
+      let hr_td = document.createElement("td");
+      hr_td.appendChild(document.createTextNode(parent['homeroom'] || '--'));
+      row.appendChild(hr_td);
+
+      let present_td = document.createElement("td");
+      let label_present = document.createElement("label");
+      let radio_present = document.createElement("input");
+      radio_present.type = "radio";
+      radio_present.name = i;
+      radio_present.id = "present" + i;
+      radio_present.value = "present" + i;
+      radio_present.className = "present";
+      label_present.appendChild(radio_present);
+      label_present.appendChild(document.createTextNode("present"));
+      present_td.appendChild(label_present);
+      row.appendChild(present_td);
+
+      let absent_td = document.createElement("td");
+      let label_absent = document.createElement("label");
+      let radio_absent = document.createElement("input");
+      radio_absent.type = "radio";
+      radio_absent.name = i;
+      radio_absent.id = "absent" + i;
+      radio_absent.value = "absent" + i;
+      radio_absent.className = "absent";
+      label_absent.appendChild(radio_absent);
+      label_absent.appendChild(document.createTextNode("absent"));
+      absent_td.appendChild(label_absent);
+      row.appendChild(absent_td);
+
+      tbody.appendChild(row);
+    });
+  }
 
   table.appendChild(tbody);
 
@@ -179,6 +232,38 @@ function setAttendance() {
   }
   for (const student of dropped_absent) {
     dropped.innerHTML += "Also absent but has since dropped: " + student;
+  }
+
+
+  let numStudents = js_roster['students'].length;
+  if ('present_adults' in js_roster) {
+    js_roster['present_adults'].forEach(function(present_adult) {
+      present_adult = present_adult.split('_');
+      let indx = -1;
+      if ('instructor_attendance' in js_selected_class) {
+        indx = js_selected_class['instructor_attendance'].findIndex(adult => adult['first'] === present_adult[0] && adult['last'] === present_adult[1]);
+      }
+      if (indx >= 0) {
+        indx += numStudents;
+        let radio_btn = document.getElementById("present" + indx);
+        radio_btn.checked = true;
+      }
+    });
+  }
+  
+  if ('absent_adults' in js_roster) {
+    js_roster['absent_adults'].forEach(function(absent_adult) {
+      absent_adult = absent_adult.split('_');
+      let indx = -1;
+      if ('instructor_attendance' in js_selected_class) {
+        indx = js_selected_class['instructor_attendance'].findIndex(adult => adult['first'] === absent_adult[0] && adult['last'] === absent_adult[1]);
+      }
+      if (indx >= 0) {
+        indx += numStudents;
+        let radio_btn = document.getElementById("absent" + indx);
+        radio_btn.checked = true;
+      }
+    });
   }
 }
 
@@ -326,16 +411,33 @@ window.onload = function() {
     let submitted_date = date_dropdown.value;
     let present_kids = [];
     let absent_kids = [];
-    for (let i=0; i<js_roster['students'].length; i++) {
+    let present_adults = [];
+    let absent_adults = [];
+    let students = js_roster['students']
+    let adults = js_selected_class['instructor_attendance']
+
+    for (let i=0; i<students.length; i++) {
       let rp_button = document.getElementById("present"+i);
       if (rp_button.checked) {
-        present_kids.push(js_roster['students'][i]['email']);
+        present_kids.push(students[i]['email']);
       }
       let ra_button = document.getElementById("absent"+i);
       if (ra_button.checked) {
-        absent_kids.push(js_roster['students'][i]['email']);
+        absent_kids.push(students[i]['email']);
       }
     }
+    
+    for (let i=students.length; i<students.length+adults.length; i++) {
+      let rp_button = document.getElementById("present"+i);
+      if (rp_button.checked) {
+        present_adults.push(adults[i-students.length]['first'] + '_' + adults[i-students.length]['last'])
+      }
+      let ra_button = document.getElementById("absent"+i);
+      if (ra_button.checked) {
+        absent_adults.push(adults[i-students.length]['first'] + '_' + adults[i-students.length]['last']);
+      }
+    }
+    
     let note = document.getElementById("attend-text").value;
     sendPost({"institution" : "{{institution}}",
               "session" : "{{session}}",
@@ -343,20 +445,34 @@ window.onload = function() {
               "c_id" : c_id,
               "present_kids" : present_kids,
               "absent_kids" : absent_kids,
+              "present_adults" : present_adults,
+              "absent_adults" : absent_adults,
               "note" : note});
   }
 
   present_radio.onclick = function() {
+    let numStudents = 0;
     if (! isEmptyObject(js_roster)) {
       js_roster['students'].forEach(function(student, i) {
+        document.getElementById("present" + i).checked = true;
+        numStudents += 1;
+      });
+      js_selected_class['instructor_attendance'].forEach(function(parent, i) {
+        i += numStudents;
         document.getElementById("present" + i).checked = true;
       });
     }
   }
 
   absent_radio.onclick = function() {
+    let numStudents = 0;
     if (! isEmptyObject(js_roster)) {
       js_roster['students'].forEach(function(student, i) {
+        document.getElementById("absent" + i).checked = true;
+        numStudents += 1;
+      });
+      js_selected_class['instructor_attendance'].forEach(function(parent, i) {
+        i += numStudents;
         document.getElementById("absent" + i).checked = true;
       });
     }

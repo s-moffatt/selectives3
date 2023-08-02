@@ -1,3 +1,6 @@
+venv
+templates/_firebase_config.js
+
 *.py[cod]
 __pycache__/
 *~

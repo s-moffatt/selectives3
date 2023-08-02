@@ -82,7 +82,7 @@ class ByExample(object):
     if not len(schema) == 1:
       raise Exception("Array schema should have exactly one element."
                       " Schema = %s" % schema)
-    if yaml_obj == None and schema[0] == "OPTIONAL":
+    if yaml_obj == None: # Allow optional list of dicts
       return True
     if not isinstance(yaml_obj, list):
       self._AddError(parent,
