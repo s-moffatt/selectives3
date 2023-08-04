@@ -17,10 +17,10 @@ function displayAttendance() {
 
   {% for c in data.classes %}
     class_div = document.createElement("div");
-    class_div.id = "attend-view-class";
+    class_div.className += "attend-view-class";
     class_header = document.createElement("div");
     class_header.style.display = "flex";
-    class_header.id = "attend-view-header";
+    class_header.className += "attend-view-header";
 
     name = document.createElement("div");
     instructor = document.createElement("div");
@@ -33,6 +33,7 @@ function displayAttendance() {
     instructor.style.width = "280px";
     daypart.style.width = "150px";
     location.style.width = "150px";
+    location.style["margin-right"] = "8px";
     enrolled.style.width = "50px";
 
     name.innerHTML = "{{c['name']}}";
@@ -50,10 +51,11 @@ function displayAttendance() {
       absences.appendChild(class_div);
     {% else %}
       table = document.createElement("table");
-      table.id = "attend-view-class-table";
+      table.className += "attend-view-class-table compact stripe";
       thead = document.createElement("thead");
       row = document.createElement("tr");
       header = document.createElement("th")
+      header.innerHTML = "name";
       row.appendChild(header);
       header = document.createElement("th")
       header.innerHTML = "gr";
@@ -61,9 +63,9 @@ function displayAttendance() {
       header = document.createElement("th")
       header.innerHTML = "rm";
       row.appendChild(header);
-      {% for d in c['dates_sorted'] %}
+      {% for d in c['dates_sorted']|reverse  %}
         header = document.createElement("th");
-        header.style.width = "50px";
+        //header.style.width = "50px";
         header.innerHTML = "{{d[1]}}";
         {% if c['attendance'][d[0]]['note'] %}
           header.innerHTML += "*";
@@ -80,15 +82,15 @@ function displayAttendance() {
         sname = document.createElement("td");
         sgrade = document.createElement("td");
         shomeroom = document.createElement("td");
-        sname.style.width = "200px";
-        sgrade.style.width = "16px";
-        shomeroom.style.width = "20px";
+        //sname.style.width = "200px";
+        //sgrade.style.width = "16px";
+        //shomeroom.style.width = "20px";
         sname.innerHTML = "{{s['first']}} {{s['last']}}";
         sgrade.innerHTML = "{{s['current_grade']}}";
         shomeroom.innerHTML = "{{s['current_homeroom']}}";
         row.append(sname, sgrade, shomeroom);
  
-        {% for d in c['dates_sorted'] %}
+        {% for d in c['dates_sorted']|reverse  %}
           td = document.createElement("td");
           {% if s['email'] in c['attendance'][d[0]]['absent'] %}
             td.innerHTML = "X";
@@ -113,6 +115,20 @@ function displayAttendance() {
       absences.appendChild(class_div);
     {% endif %}
   {% endfor %}
+  new DataTable('.attend-view-class-table', {
+    fixedColumns: true,
+    searching: false, paging: false, info: false,
+    scrollCollapse: true,
+    scrollX: true,
+    scrollY: 300,
+    drawCallback: function( settings ) {
+      // Reset margin to 0 after datatable render
+      $('.dataTables_scrollBody .dataTable').css('margin','0');
+      $('.attend-view-class-table tr      th:first-child').css({'background-color':'#ffffff','z-index':1});
+      $('.attend-view-class-table tr.even td:first-child').css('background-color','#ffffff');
+      $('.attend-view-class-table tr.odd  td:first-child').css('background-color','#f9f9f9');
+    },
+  });
 }
 
 function fillDaypartDropDown() {
