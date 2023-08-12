@@ -303,31 +303,39 @@ textarea {
   margin-right: 5px;
   margin-left: 15px;
 }
-#attend-view-class {
+.attend-view-class {
   margin: 0px 0px 60px 0px;
   border: 1px solid #555;
   border-radius: 5px;
 }
-#attend-view-header {
+.attend-view-header {
   border-bottom: 1px solid #555;
   background-color: #d1dfe3;
   padding: 6px 0px 4px 7px;
   border-radius: 5px 5px 0px 0px;
   font-weight: bold;
 }
-#attend-view-class-table {
+.attend-view-header div {
+  word-wrap:break-word;
+}
+.attend-view-class-table {
   /*border-left: 1px solid #555;
   border-right: 1px solid #555;*/
   border-collapse: collapse;
 }
-#attend-view-class-table th, #attend-view-class-table td {
+.attend-view-class-table th, .attend-view-class-table td {
   padding: 2px 8px 0;
   border: 1px solid #ccc;
   border-collapse: collapse;
 }
-#attend-view-class-table tbody tr:nth-child(odd) {
-  background-color: #f1f1f1;;
+/*
+.attend-view-class-table tbody tr:nth-child(even) {
+  background-color: white !important;
 }
+.attend-view-class-table tbody tr:nth-child(odd) {
+  background-color: #f1f1f1 !important;
+}
+*/
 .attend-homeroom {
   font-size: 28px;
   width = 400px;
@@ -595,4 +603,21 @@ table.attendanceLegend {
   font-size: 0.8em;
   border: 1px solid black;
   border-collapse: collapse;
+}
+
+/***** absence *****/
+.danger {
+  background-color: pink;
+}
+#absence-view-classes-table, #absence-view-absences-table {
+  border-collapse: collapse;
+  margin-top: 25px;
+}
+#absence-view-classes-table th, #absence-view-classes-table td, #absence-view-absences-table th, #absence-view-absences-table td {
+  padding: 2px 8px 0;
+  border: 1px solid #ccc;
+  border-collapse: collapse;
+}
+#absence-view-classes-table tbody tr:nth-child(odd), #absence-view-absences-table tbody tr:nth-child(odd) {
+  background-color: #f1f1f1;;
 }

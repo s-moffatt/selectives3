@@ -348,6 +348,43 @@ def GetComingSoon(cls, institution, session, auth):
   }
 
 @classmethod
+def GetViewAbsence(cls, institution, session, auth):
+  selected_date = get_param("selected_date",datetime.date.today())
+  selected_daypart = get_param('selected_daypart','All')
+
+  dayparts = models.Dayparts.FetchJson(institution, session)
+  classes = models.Classes.FetchJson(institution, session)
+  students = models.Students.FetchJson(institution, session)
+
+  if not students: students = []
+  students_dict = {}
+  for s in students:
+    s['email'] = s['email'].lower()
+    students_dict[s['email']] = s
+
+  classes_to_display = []
+  if not classes: classes = []
+  for c in classes:
+    #if 'Core' not in c['name']: #TODO: remove Core classes in a more general way
+    if selected_daypart == 'All':
+      augmentClass(institution, session, c, students_dict)
+      classes_to_display.append(c)
+    else:
+      for s in c['schedule']:
+        if selected_daypart in s['daypart']:
+          augmentClass(institution, session, c, students_dict)
+          classes_to_display.append(c)
+  classes_to_display.sort(key=alphaOrder)
+
+  return {
+    'user_type' : 'Teacher' if auth.email==auth.teacher_email else 'Admin',
+    'selected_date'   : selected_date,
+    'selected_daypart': selected_daypart,
+    'dayparts'  : current_app.json.dumps(dayparts),
+    'classes'   : current_app.json.dumps(classes_to_display),
+  }
+
+@classmethod
 def GetViewAttendance(cls, institution, session, auth):
   selected_daypart = get_param('selected_daypart','All')
 
@@ -760,6 +797,13 @@ Reports = {
     "template"    : "coming_soon.html",
     "student_access": True,
     "get_data"    : GetComingSoon,
+  },
+  "view_absence": {
+    "view"        : "Report",
+    "route"       : "/teacher/view_absence",
+    "template"    : "view_absence.html",
+    "teacher_access": True,
+    "get_data"    : GetViewAbsence,
   },
   "view_attendance": {
     "view"        : "Report",
