@@ -3,4 +3,9 @@
       var admin  = document.getElementById("admin");
       var logbtn = document.getElementById("logbtn");
       var msg    = document.getElementById("message");
+      window.addEventListener("load", (event) => {
+      	if (!document.getElementById('sidebar')) { 
+      		document.getElementById('sidebarButton').classList.add("d-none"); 
+      	}
+      });
     </script>

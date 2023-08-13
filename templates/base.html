@@ -3,54 +3,66 @@
 <html lang="en">
   <head>
     <title>Discovery Selectives</title>
-    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='/stylesheets/main.css') }}" />
     <link href='https://fonts.googleapis.com/css?family=Oxygen' rel='stylesheet' type='text/css'>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">     
     {% include '_script_head.html' %}
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='/stylesheets/main.css') }}" />
   </head>
   <body id="body-user">
     <div id="body-user-inner" redirect="{{ redirect }}" uid="{{ uid }}">
-    <table width=100%><tr>
-      <td align=left><h1>
-        {# TODO fix this hack:
+      <header id="header-main" class="navbar navbar-expand-lg bg-body-tertiary">
+        <nav class="container-xxl flex-wrap flex-md-nowrap">
+          <div class="bd-navbar-toggle">
+            <button class="navbar-toggler p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" id="sidebarButton">
+              <i class="fa fa-bars"></i>
+            </button>
+          </div>
+          {# TODO fix this hack:
            We need an institution url not a session_query #}
-        {% if session_query %}
-          <a href="/institution?{{ session_query }}">{{ institution }} {{ session }} Selectives</a>
-        {% else %}
-          <a href="/">{{ institution }} {{ session if session }} Selectives</a>
-        {% endif %}
-      </h1></td>
-      {% if message and (message != '') %}
-      <td class="message" id="message">
-        <span class="message_closebtn" onclick="this.parentElement.style.display='none';">&times;</span> 
-        <strong>{{ message }}</strong>
-      </td>
-      {% endif %}
-      <!--This message will only display on certain admin pages that pass setup_status.-->
-      {% if setup_status and (setup_status == 'DB_UPDATE_NEEDED') %}
-      <td style="color:red">
-        Database upgrade required! Go to Validate Setup to run upgrade script.
-      </td>
-      {% endif %}
-      {% if setup_status and (setup_status == 'FAIL') %}
-      <td style="color:blue">
-        Setup validation failed! See Validate Setup page for details.
-      </td>
-      {% endif %}
-      {% if setup_status and (setup_status == 'UNKNOWN') %}
-      <td style="color:blue">
-        Setup status unknown. Running Validate Setup is advised.
-      </td>
-      {% endif %}
-      <td align=right>
-      {% include '_user.html' %}
-      </td>
-    </tr></table>
-    <hr>
-    <div id="block_body">      
-        {% block body %} {% endblock %}
-    </div>
+          {% if session_query %}
+		      <a style="text-decoration: underline;" class="navbar-brand p-0 me-2 text-wrap" href="/institution?{{ session_query }}">{{ institution }} {{ session }} Selectives</a>
+          {% else %}
+          <a style="text-decoration: underline;" class="navbar-brand p-0 me-2 text-wrap" href="/">{{ institution }} {{ session if session }} Selectives</a>
+          {% endif %}
+          <div class="collapse navbar-collapse" id="navbarText">
+            {% if message and (message != '') %}
+            <span class="navbar-text message" id="message">
+              <span class="message_closebtn" onclick="this.parentElement.style.display='none';">&times;</span> 
+              <strong>{{ message }}</strong>
+            </span>
+            {% endif %}
+            <!--This message will only display on certain admin pages that pass setup_status.-->
+            {% if setup_status and (setup_status == 'DB_UPDATE_NEEDED') %}
+            <span class="navbar-text text-danger">
+              Database upgrade required! Go to Validate Setup to run upgrade script.
+            </span>
+            {% endif %}
+            {% if setup_status and (setup_status == 'FAIL') %}
+            <span class="navbar-text text-primary">
+              Setup validation failed! See Validate Setup page for details.
+            </span>
+            {% endif %}
+            {% if setup_status and (setup_status == 'UNKNOWN') %}
+            <span class="navbar-text text-primary">
+              Setup status unknown. Running Validate Setup is advised.
+            </span>
+            {% endif %}
+          </div>
+	        <div class="d-flex">
+            <button class="navbar-toggler d-flex d-lg-none order-3 p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#login">
+              <i class="fa-solid fa-arrow-right-to-bracket"></i>
+            </button>
+          </div>
+          {% include '_user.html' %}
+        </nav>
+      </header>
+
+      <main class="col">
+        <div id="block_body">
+          {% block body %} {% endblock %}
+        </div>
+      </main>
     </div>
     {% include '_script_body.html' %}
   </body>

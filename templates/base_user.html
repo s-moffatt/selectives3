@@ -4,25 +4,43 @@
 <html lang="en">
   <head>
     <title>Discovery Selectives</title>
-    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='/stylesheets/main.css') }}" />
     <link href='https://fonts.googleapis.com/css?family=Oxygen' rel='stylesheet' type='text/css'>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">     
     {% include '_script_head.html' %}
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='/stylesheets/main.css') }}" />
   </head>
   <body id="body-user">
     <div id="body-user-inner" redirect="{{ redirect }}" uid="{{ uid }}">
-    <div id="header-user">
-      <div id="logo-user">
-        <img src="{{ url_for('static', filename='/images/DiscoveryMascot_Logo_Tiny.jpg') }}" alt="DCS phoenix logo" width="50px">
-        <div id=title-user>Discovery Selectives</div>
-      </div>
-      <div id="session-user">{% if session %}{{session}}{% endif %}</div>
-      {% include '_user.html' %}
-    </div>
-    <div id="block_body">
-        {% block body %} {% endblock %}
-    </div>
+
+      <header id="header-user" class="navbar navbar-expand-lg bg-body-tertiary">
+        <nav class="container-xxl flex-wrap flex-md-nowrap">
+          <div class="bd-navbar-toggle">
+            <button class="navbar-toggler p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" id="sidebarButton">
+              <i class="fa fa-bars"></i>
+            </button>
+          </div>
+          <a class="navbar-brand p-0 me-2" href="/" id="logo-user">
+            <img src="{{ url_for('static', filename='/images/DiscoveryMascot_Logo_Tiny.jpg') }}" alt="DCS phoenix logo" width="50px">
+            <span class="d-none d-sm-block" id=title-user>Discovery Selectives</span>
+          </a>
+          <div class="collapse navbar-collapse" id="navbarText">
+            <span class="navbar-text">{% if session %}{{session}}{% endif %}</span>
+          </div>
+         <div class="d-flex">
+          <button class="navbar-toggler d-flex d-lg-none order-3 p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#login">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i>
+          </button>
+          </div>
+          {% include '_user.html' %}
+        </nav>
+      </header>
+
+      <main class="col">
+        <div id="block_body">
+          {% block body %} {% endblock %}
+        </div>
+      </main>
     </div>
     {% include '_script_body.html' %}
   </body>
