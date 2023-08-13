@@ -149,6 +149,7 @@
       js_classes.forEach(c => {
         if (c.roster.length>0) {
           row = createRow("td",[c.name,c.instructor,c.location]);
+          row.setAttribute("cid",c.id);
           row.appendChild(createAttendenceSummaryTd(c,date_selected,absences));
           tbody.appendChild(row);
         }
@@ -162,8 +163,8 @@
             'copy', 'excel', 'csvHtml5'
         ]
       });
-      links=Object.fromEntries(js_classes.map(x => [x.name, createTakeAttendanceLink(x,date_selected)]));
-      $('#'+id+'.table tbody tr :first-child').each(function(){ $(this).html(links[$(this).text()])})
+      links=Object.fromEntries(js_classes.map(x => [x.id, createTakeAttendanceLink(x,date_selected)]));
+      $('#'+id+'.table tbody tr').each(function(){ $(this).children().first().html(links[$(this).attr("cid")])});
 
       // create absences table
       id = "absence-view-absences-table";
