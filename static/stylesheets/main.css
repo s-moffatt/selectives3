@@ -645,3 +645,6 @@ table.attendanceLegend {
 .bg-body-tertiary {
   background-color: #f1f1f1 !important;
 }
+input[type="date"].form-control {
+  max-width: min-content;
+}

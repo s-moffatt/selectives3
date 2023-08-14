@@ -1,11 +1,19 @@
     <script>
+      function bootstrapfy() {
+        if ($('#sidebar').length) { 
+          $('#sidebarButton').removeClass( "d-none" );
+        } else {
+          $('#sidebarButton').addClass( "d-none" );
+        }        
+        $('input[type=date]').addClass('form-control');
+        $('textarea').attr('style','').addClass('form-control');
+        $('select').addClass('form-select');
+      }
       var who    = document.getElementById("who");
       var admin  = document.getElementById("admin");
       var logbtn = document.getElementById("logbtn");
       var msg    = document.getElementById("message");
       window.addEventListener("load", (event) => {
-      	if (!document.getElementById('sidebar')) { 
-      		document.getElementById('sidebarButton').classList.add("d-none"); 
-      	}
+      	bootstrapfy();
       });
     </script>
