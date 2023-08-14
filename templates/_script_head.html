@@ -34,7 +34,8 @@
             var email = user.email;
             who.innerHTML = email;
             logbtn.onclick = logout;
-            logbtn.innerHTML = "Sign out";
+            $('#logbtn').text("Sign out");
+            $('.fa-sign-in').removeClass('fa-sign-in').addClass('fa-sign-out');
             var uid = await user.uid;
             if (!document.getElementById("body-user").firstElementChild || uid != document.getElementById("body-user").firstElementChild.getAttribute('uid')) {
               var idToken = await user.getIdToken();
@@ -53,7 +54,8 @@
                 document.getElementById("body-user").innerHTML=doc.getElementById('body-user').innerHTML;
                 document.getElementById("who").innerHTML = email;
                 document.getElementById("logbtn").onclick = logout;
-                document.getElementById("logbtn").innerHTML = "Sign out";
+                $('#logbtn').text("Sign out");
+                $('.fa-sign-in').removeClass('fa-sign-in').addClass('fa-sign-out');
                 if (document.getElementById('sidebar')) { 
                   $('#sidebarButton').removeClass( "d-none" );
                 } else {
@@ -79,7 +81,8 @@
               who.innerHTML = "";
               admin.style.display = "none";
               logbtn.onclick = login;
-              logbtn.innerHTML = "Sign in";
+              $('#logbtn').text("Sign in");
+              $('.fa-sign-out').removeClass('fa-sign-out').addClass('fa-sign-in');
               if(document.getElementById("welcome-user")){
                 //console.log("welcome-user")
               } else {

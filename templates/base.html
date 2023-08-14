@@ -21,9 +21,9 @@
           {# TODO fix this hack:
            We need an institution url not a session_query #}
           {% if session_query %}
-		      <a style="text-decoration: underline;" class="navbar-brand p-0 me-2 text-wrap" href="/institution?{{ session_query }}">{{ institution }} {{ session }} Selectives</a>
+		      <a style="text-decoration: underline;" class="navbar-brand p-0 me-2 text-wrap" href="/institution?{{ session_query }}">{{ institution }} <span class="d-none d-lg-inline">{{ session }}</span> Selectives</a>
           {% else %}
-          <a style="text-decoration: underline;" class="navbar-brand p-0 me-2 text-wrap" href="/">{{ institution }} {{ session if session }} Selectives</a>
+          <a style="text-decoration: underline;" class="navbar-brand p-0 me-2 text-wrap" href="/">{{ institution }} <span class="d-none d-lg-inline">{{ session if session }}</span> Selectives</a>
           {% endif %}
           <div class="collapse navbar-collapse" id="navbarText">
             {% if message and (message != '') %}
@@ -49,9 +49,12 @@
             </span>
             {% endif %}
           </div>
+
+
+
 	        <div class="d-flex">
             <button class="navbar-toggler d-flex d-lg-none order-3 p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#login">
-              <i class="fa-solid fa-arrow-right-to-bracket"></i>
+              <i class="fa fa-sign-in logbtn"></i>
             </button>
           </div>
           {% include '_user.html' %}
