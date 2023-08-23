@@ -132,7 +132,7 @@
     if (!daypart_selected.match("select a daypart")) { 
       // create classes table
       id = "absence-view-classes-table";
-      h = document.createElement("h1");
+      h = document.createElement("h4");
       h.innerHTML = "Attendance Status";
       classes_div.replaceChildren(h);
 
@@ -149,6 +149,7 @@
       js_classes.forEach(c => {
         if (c.roster.length>0) {
           row = createRow("td",[c.name,c.instructor,c.location]);
+          row.setAttribute("cid",c.id);
           row.appendChild(createAttendenceSummaryTd(c,date_selected,absences));
           tbody.appendChild(row);
         }
@@ -156,18 +157,18 @@
       table.appendChild(tbody);
       classes_div.appendChild(table);
       $('#'+id+'.table').DataTable({
-        bPaginate: false,
+        searching: false, paging: false, info: false,
         dom: 'Bfrtip',
         buttons: [
             'copy', 'excel', 'csvHtml5'
         ]
       });
-      links=Object.fromEntries(js_classes.map(x => [x.name, createTakeAttendanceLink(x,date_selected)]));
-      $('#'+id+'.table tbody tr :first-child').each(function(){ $(this).html(links[$(this).text()])})
+      links=Object.fromEntries(js_classes.map(x => [x.id, createTakeAttendanceLink(x,date_selected)]));
+      $('#'+id+'.table tbody tr').each(function(){ $(this).children().first().html(links[$(this).attr("cid")])});
 
       // create absences table
       id = "absence-view-absences-table";
-      h = document.createElement("h1");
+      h = document.createElement("h4");
       h.innerHTML = "Absence List";
       absences_div.replaceChildren(h);
 
@@ -188,13 +189,15 @@
       table.appendChild(tbody);
       absences_div.appendChild(table);
       $('#'+id+'.table').DataTable({
-        bPaginate: false,
+        searching: false, paging: false, info: false,
         dom: 'Bfrtip',
         buttons: [
             'copy', 'excel', 'csvHtml5'
         ]
     });
 
+    $('.dt-button').removeClass('dt-button').addClass('btn').addClass('btn-outline-secondary').addClass('btn-sm');
+    $('.dataTables_wrapper').addClass('table-responsive');
     }
   }
 
@@ -247,12 +250,14 @@
 <div>
   <div id="instructions" style="margin-top:5px; margin-bottom:7px">Newer data may be available. Refresh the page to see the most up-to-date attendance as this page does not refresh automatically.</div>
   <div id="attend-date"><input type="date" id="dateInput" required></div>
-  <div class="attend-view-by">
+  <div class="attend-view-by" row gy-2 gx-3 align-items-center">
+  <div class="col-auto">
     <label for="daypartDropDown">Daypart</label>
     <select id="daypartDropDown"></select>
   </div>
-  <div id="absences"></div>
-  <div id="classes"></div>
+  </div>
+  <div id="absences" class="mt-5"></div>
+  <div id="classes"  class="mt-5"></div>
 </div>
 
 {% endblock %}

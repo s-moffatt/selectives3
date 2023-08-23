@@ -25,9 +25,10 @@ function displayAttendance() {
     {% for c in data.classes_by_homeroom[homeroom] %}
       class_div = document.createElement("div");
       class_div.className += "attend-view-class";
+      class_div.className += " container-fluid";
       class_header = document.createElement("div");
-      class_header.style.display = "flex";
       class_header.className += "attend-view-header";
+      class_header.className += " row";
 
       name = document.createElement("div");
       instructor = document.createElement("div");
@@ -35,12 +36,11 @@ function displayAttendance() {
       location = document.createElement("div");
       enrolled = document.createElement("div");
 
-      name.style.width = "350px";
-      name.style.fontSize = "1.1em";
-      instructor.style.width = "280px";
-      daypart.style.width = "150px";
-      location.style.width = "150px";
-      enrolled.style.width = "50px";
+      name.className += "col-lg-4";
+      instructor.className += "col-lg-3";
+      daypart.className += "col-lg-2";
+      location.className += "col-lg-2";
+      enrolled.className += "col-lg-1";
 
       name.innerHTML = "{{c['name']}}";
       instructor.innerHTML = "{{c['instructor']}}";
@@ -69,7 +69,7 @@ function displayAttendance() {
         header = document.createElement("th");
         header.innerHTML = "rm";
         row.appendChild(header);
-        {% for d in c['dates_sorted'] %}
+        {% for d in c['dates_sorted']|reverse  %}
           header = document.createElement("th");
           //header.style.width = "50px";
           header.innerHTML = "{{d[1]}}";
@@ -98,7 +98,7 @@ function displayAttendance() {
           shomeroom.innerHTML = "{{s['current_homeroom']}}";
           row.append(sname, sgrade, shomeroom);
  
-          {% for d in c['dates_sorted'] %}
+          {% for d in c['dates_sorted']|reverse  %}
             td = document.createElement("td");
             {% if s['email'] in c['attendance'][d[0]]['absent'] %}
               td.innerHTML = "X";
@@ -126,6 +126,7 @@ function displayAttendance() {
     absences.appendChild(homeroom_div);
   {% endfor %}
   new DataTable('.attend-view-class-table', {
+    responsive: true,
     fixedColumns: true,
     searching: false, paging: false, info: false,
     scrollCollapse: true,
@@ -137,6 +138,7 @@ function displayAttendance() {
       $('.attend-view-class-table tr      th:first-child').css({'background-color':'#ffffff','z-index':1});
       $('.attend-view-class-table tr.even td:first-child').css('background-color','#ffffff');
       $('.attend-view-class-table tr.odd  td:first-child').css('background-color','#f9f9f9');
+      $('.attend-view-class .dt-row .col-sm-12').addClass('p-0');
     },
   });
 }
@@ -219,11 +221,15 @@ window.onload = function() {
 <div>
   <div id="instructions" style="margin-top:5px; margin-bottom:7px">Newer data may be available. Refresh the page to see the most up-to-date attendance as this page does not refresh automatically.
   <br>Tip: Hover your mouse over a column to read notes left by the instructor. An asterisk next to a date indicates that a note exists.</div>
-  <div class="attend-view-by">
+  <div class="attend-view-by row pb-3 gy-2 gx-3 align-items-center">
+  <div class="col-auto">
     <label for="homeroomDropDown">Homeroom to display: </label>
     <select id="homeroomDropDown"></select>
+  </div>
+  <div class="col-auto">
     <label for="daypartDropDown">Classes to display:</label>
     <select id="daypartDropDown"></select>
+  </div>
   </div>
   <div id="absences"></div>
 </div>
