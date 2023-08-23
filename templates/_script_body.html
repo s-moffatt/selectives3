@@ -8,6 +8,12 @@
         $('input[type=date]').addClass('form-control');
         $('textarea').attr('style','').addClass('form-control');
         $('select').addClass('form-select');
+        $('.copy-to-clipboard').click(function () {
+          $(this).select();
+          document.execCommand("copy");    
+        });
+        $('.copy-to-clipboard').attr('data-bs-toggle','popover').attr('data-bs-content','Copied!').attr('data-bs-trigger','focus');
+        $('[data-bs-toggle="popover"]').popover();
       }
       var who    = document.getElementById("who");
       var admin  = document.getElementById("admin");

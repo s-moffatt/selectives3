@@ -1,7 +1,7 @@
 {% extends 'base_user.html' %}
 {% block body %}
 
-<div id="main-teacher">
+<div id="main-teacher" class="d-flex p-3 gap-3">
   <div class="offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar">
     <div class="offcanvas-header border-bottom">
       <h5 class="offcanvas-title" id="sidebarOffcanvasLabel">{% if session %}{{session}}{% endif %}</h5>
@@ -54,7 +54,7 @@
       </ul>
     </div>
   </div>
-  <div id="view-teacher">
+  <div id="view-teacher" class="overflow-auto">
   {% block session_body %} {% endblock %}
   </div>
 </div>
