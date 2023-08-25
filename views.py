@@ -38,7 +38,7 @@ def getStudentInfo(student_dict, email):
               str(s['current_homeroom'])]
   else:
     current_app.logger.error('getStudentInfo: ' + email + ' not found in dictionary')
-    return ''
+    return ['']
 
 def getClassObj(class_dict, line):
   if len(line) < 1:
@@ -69,13 +69,9 @@ def alphaOrder(c):
           c['instructor'])
 
 def listOrder(c):
-  if 'instructor' in c:
-    return (c['name'],
-            c['dayorder'],
-            c['instructor'])
-  else:
-    return (c['name'],
-            c['dayorder'])
+  return (c['name'],
+          c['dayorder'],
+          c['instructor'] if 'instructor' in c else '')
 
 def buildRoster(c, roster, attendance, students):
   r = {}

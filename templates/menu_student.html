@@ -20,6 +20,8 @@ window.onload = function() {
   }
   if (active != null) {
     active.classList.add('menu-user-active');
+    let a = active.querySelector('a');
+    a.classList.add('active');
   } else {
     if (window.location.pathname == '/coming_soon') {
       //console.log("coming_soon");
@@ -31,14 +33,14 @@ window.onload = function() {
 </script>
 <div id="menu-user-wrapper">
   <div id="menu-user-spacer-left"></div>
-  <ul id="menu-user">
-    <li id='menu-user-prereg'><a href="/preregistration?{{ session_query }}{{ impersonation }}">Step 1 - Materials</a></li>
-    <li id='menu-user-sched'><a href="/schedule?{{ session_query }}{{ impersonation }}">Step 2 - Register</a></li>
-    <li id='menu-user-postreg'><a href="/postregistration?{{ session_query }}{{ impersonation }}">Step 3 - Final Schedule</a></li>
+  <ul class="nav nav-tabs justify-content-center" id="menu-user">
+    <li class="px-lg-4 py-lg-1 nav-item" id='menu-user-prereg' ><a class="nav-link" href="/preregistration?{{ session_query }}{{ impersonation }}" ><span class="d-none d-lg-inline">Step 1 - </span>Materials</a></li>
+    <li class="px-lg-4 py-lg-1 nav-item" id='menu-user-sched'  ><a class="nav-link" href="/schedule?{{ session_query }}{{ impersonation }}"        ><span class="d-none d-lg-inline">Step 2 - </span>Register</a></li>
+    <li class="px-lg-4 py-lg-1 nav-item" id='menu-user-postreg'><a class="nav-link" href="/postregistration?{{ session_query }}{{ impersonation }}"><span class="d-none d-lg-inline">Step 3 - </span>Final Schedule</a></li>
   </ul>
   <div id="menu-user-spacer-right"></div>
 </div>
-<div id="main-user">
+<div id="main-user" class="d-flex justify-content-center p-3 gap-3 overflow-auto">
   {% block session_body %} {% endblock %}
 </div>
 

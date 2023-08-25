@@ -482,7 +482,7 @@ window.onload = function() {
 
 <h3 style="margin-bottom:4px; margin-top:4px">Attendance</h3>
 <p id="instructions">Classes that you teach or assist in are listed first; other classes are listed below the dashed line.<br>
-If you would like to be added as an instructor or assistant to a class, please email selectives@discoveryk8.org.
+If you would like to be added as an instructor or assistant to a class, please email <a href="mailto:selectives@discoveryk8.org">selectives@discoveryk8.org</a>.
 </p>
 <div>
   <div id="attend-date"><input type="date" id="dateInput" required></div>
@@ -490,7 +490,7 @@ If you would like to be added as an instructor or assistant to a class, please e
   <div id="taken_warning" style="color:red; font-size: 120%; font-weight: bold; margin: 7px;"></div>
   <div id="taken_msg" style="margin: 7px;"></div>
   <div>
-    <table id="roster_table">
+    <table class="table table-sm" id="roster_table">
       <thead>
         <tr>
           <th>Name</th>
@@ -504,7 +504,7 @@ If you would like to be added as an instructor or assistant to a class, please e
   </div>
   <div id="dropped" style="margin: 4px 0px 4px 0px"></div>
   <div id="attend-note"></div>
-  <div id="attend-buttons"><input type="button" id="attend-edit" value="Edit">
-  <input type="button" id="attend-submit" value="Submit"></div>
+  <div id="attend-buttons"><input type="button" id="attend-edit" value="Edit" class="btn btn-outline-secondary">
+  <input type="button" id="attend-submit" value="Submit" class="btn btn-outline-secondary"></div>
 </div>
 {% endblock %}
