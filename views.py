@@ -38,7 +38,7 @@ def getStudentInfo(student_dict, email):
               str(s['current_homeroom'])]
   else:
     current_app.logger.error('getStudentInfo: ' + email + ' not found in dictionary')
-    return ''
+    return ['']
 
 def getClassObj(class_dict, line):
   if len(line) < 1:
@@ -69,13 +69,9 @@ def alphaOrder(c):
           c['instructor'])
 
 def listOrder(c):
-  if 'instructor' in c:
-    return (c['name'],
-            c['dayorder'],
-            c['instructor'])
-  else:
-    return (c['name'],
-            c['dayorder'])
+  return (c['name'],
+          c['dayorder'],
+          c['instructor'] if 'instructor' in c else '')
 
 def buildRoster(c, roster, attendance, students):
   r = {}
@@ -185,6 +181,13 @@ def WelcomeSetupSave(cls, institution, session, auth):
     current_app.logger.critical(f"no {cls.name} data")
   models.Welcome.Store(data)
   error_check_logic.Checker.setStatus(institution, session, 'UNKNOWN')
+  return data
+
+@classmethod
+def WelcomeSetupGetData(cls, institution, session, auth):
+  data = cls.model.Fetch()
+  if not data and cls.sample:
+    with open(cls.sample) as x: data = x.read()
   return data
 
 @classmethod
@@ -867,6 +870,7 @@ Views = {
     "model"    : models.Welcome,
     "sample"   : "samples/welcome.html",
     "save"     : WelcomeSetupSave,
+    "get_data" : WelcomeSetupGetData,
     "get_jdata": getNone,
   },
   "Closed": {

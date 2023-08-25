@@ -50,46 +50,54 @@ window.onload = function() {
 <input type=hidden name="grade_level" value="{{ grade_level }}" />
 <input type=hidden name="message" value="{{ message }}" />
 Click to show student schedule errors for all or by grade.<br><br>
-<input type="button" id="showAll" value="Show All">
-<input type="button" id="show8th" value="Show 8th">
-<input type="button" id="show7th" value="Show 7th">
-<input type="button" id="show6th" value="Show 6th">
+<div class="hstack gap-2">
+<input class="btn btn-sm btn-outline-secondary" type="button" id="showAll" value="Show All">
+<input class="btn btn-sm btn-outline-secondary" type="button" id="show8th" value="Show 8th">
+<input class="btn btn-sm btn-outline-secondary" type="button" id="show7th" value="Show 7th">
+<input class="btn btn-sm btn-outline-secondary" type="button" id="show6th" value="Show 6th">
+</div>
 <div id="displayArea">
 <br>
   {% for err_obj in data.err_list %}
-    <table style="border-collapse:collapse; table-layout:fixed; width:80%">
-    <th style="text-align: left">
-    {{err_obj[1]['first']}}
-    {{err_obj[1]['last']}}
-    {{err_obj[1]['current_grade']}}
-    {{err_obj[1]['current_homeroom']}}
-    </th>
-    <th style="text-align: left" colspan="3">
-      {% for err_msg in err_obj[0] %}
-      {{err_msg}}<br>
-      {% endfor %}
-    </th>
-    <th></th>
-    <th></th>
-    <tr>
-      {% for dp in ['Mon A', 'Tues A', 'Thurs A', 'Fri A'] %}
-        {% if err_obj[2][dp] is defined %}
-        <td style="border: 1px solid black; background-color:beige">{{err_obj[2][dp]['name']}}</td>
-        {% else %}
-        <td style="border: 1px solid black; background-color:darkgrey"></td>
-        {% endif %}
-      {% endfor %}
-    </tr>
-    <tr>
-      {% for dp in ['Mon B', 'Tues B', 'Thurs B', 'Fri B'] %}
-        {% if err_obj[2][dp] is defined %}
-        <td style="border: 1px solid black; background-color:beige">{{err_obj[2][dp]['name']}}</td>
-        {% else %}
-        <td style="border: 1px solid black; background-color:darkgrey"></td>
-        {% endif %}
-      {% endfor %}
-    </tr>
-    </table>
+  <div class="card" style="width:90%">
+    <div class="card-body">
+      <h4 class="card-title">
+        {{err_obj[1]['first']}}
+        {{err_obj[1]['last']}}
+        {{err_obj[1]['current_grade']}}
+        {{err_obj[1]['current_homeroom']}}
+      </h4>
+      <p class="card-description">
+        {% for err_msg in err_obj[0] %}
+          {{err_msg}}<br>
+        {% endfor %}
+      </p>
+      <div class="table-responsive">
+        <table class="table">
+          <tbody>
+            <tr>
+              {% for dp in ['Mon A', 'Tues A', 'Thurs A', 'Fri A'] %}
+                {% if err_obj[2][dp] is defined %}
+                <td style="border: 1px solid black; background-color:beige">{{err_obj[2][dp]['name']}}</td>
+                {% else %}
+                <td style="border: 1px solid black; background-color:darkgrey"></td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+            <tr>
+              {% for dp in ['Mon B', 'Tues B', 'Thurs B', 'Fri B'] %}
+                {% if err_obj[2][dp] is defined %}
+                <td style="border: 1px solid black; background-color:beige">{{err_obj[2][dp]['name']}}</td>
+                {% else %}
+                <td style="border: 1px solid black; background-color:darkgrey"></td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
     <br>
   {% else %}
     {% if message == "button clicked" %}
@@ -99,7 +107,7 @@ Click to show student schedule errors for all or by grade.<br><br>
 </div>
 {% if data.err_list|length > 0 %}
 <br>Copy and paste the following into Serving Rules to grant these students access to their Schedule page.<br>
-<textarea>
+<textarea class="copy-to-clipboard">
 - name: schedule
   allow:{% for err_obj in data.err_list %}
   - email: {{err_obj[1]['email']}}{% endfor %}

@@ -50,19 +50,19 @@ window.onload = function() {
 <h3>Student Emails</h3>
 {% if data.classes %}
 <h4>Use this page to get email addresses of registered students.</h4>
-<p>To download emails for all classes to .csv file, click here: <button id="copyall">Download All</button><br>When opening the .csv file, choose semicolon ";" as the separator.</p>
+<p>To download emails for all classes to .csv file, click here: <button class="btn btn-sm btn-outline-secondary" id="copyall">Download All</button><br>When opening the .csv file, choose semicolon ";" as the separator.</p>
 <p>To copy emails for a single class, find the class you want below and click Copy Emails to save to your clipboard.<br>Then go to your email and paste (Ctrl-v) the email addresses into the 'To' field of your message.</p>
 {% for c in data.classes %}
 <div id="email-main">
-  <div id="email-heading">
-    <button class="email-copybtn" title="copy to clipboard" id="copybtn{{c['id']}}">Copy Emails</button>
-    <div class="email-item">{{ c['name'] }}</div>
-    <div class="email-item">{{ c['instructor'] }}</div>
-    <div class="email-item">{% for s in c['schedule'] %}
+  <div class="row gx-3 p-2" id="email-heading">
+    <button class="col-auto email-copybtn btn btn-sm btn-outline-secondary" title="copy to clipboard" id="copybtn{{c['id']}}">Copy Emails</button>
+    <div class="col-sm-5 email-item">{{ c['name'] }}</div>
+    <div class="col-sm-2 email-item">{{ c['instructor'] }}</div>
+    <div class="col-sm-3 email-item">{% for s in c['schedule'] %}
         {{ s['daypart'] }}{{', ' if not loop.last }}
       {% endfor %}</div>
   </div>
-  <textarea class="email-list" id="emails{{c['id']}}" readonly>{% for email in data.rosters[c['id']]['emails'] %}{{email}}{{';' if not loop.last }}{% endfor %}</textarea>
+  <textarea class="email-list copy-to-clipboard" id="emails{{c['id']}}" readonly>{% for email in data.rosters[c['id']]['emails'] %}{{email}}{{';' if not loop.last }}{% endfor %}</textarea>
 </div>
 {% endfor %}
 {% else %}

@@ -22,20 +22,13 @@ def get_param(k,*args):
   return v
 
 def listOrder(c):
-  if 'instructor' in c:
-    return (c['name'],
-            c['dayorder'],
-            c['instructor'])
-  else:
-    return (c['name'],
-            c['dayorder'])
+  return (c['name'],
+          c['dayorder'],
+          c['instructor'] if 'instructor' in c else '')
 
 def alphaOrder(c):
-  if 'instructor' in c:
-    return (c['name'],
-            c['instructor'])
-  else:
-    return (c['name'])
+  return (c['name'],
+          c['instructor'] if 'instructor' in c else '')
 
 def removeTaken(taken, students):
   return [s for s in students if s['email'] not in (taken or [])]
@@ -355,6 +348,43 @@ def GetComingSoon(cls, institution, session, auth):
   }
 
 @classmethod
+def GetViewAbsence(cls, institution, session, auth):
+  selected_date = get_param("selected_date",datetime.date.today())
+  selected_daypart = get_param('selected_daypart','All')
+
+  dayparts = models.Dayparts.FetchJson(institution, session)
+  classes = models.Classes.FetchJson(institution, session)
+  students = models.Students.FetchJson(institution, session)
+
+  if not students: students = []
+  students_dict = {}
+  for s in students:
+    s['email'] = s['email'].lower()
+    students_dict[s['email']] = s
+
+  classes_to_display = []
+  if not classes: classes = []
+  for c in classes:
+    #if 'Core' not in c['name']: #TODO: remove Core classes in a more general way
+    if selected_daypart == 'All':
+      augmentClass(institution, session, c, students_dict)
+      classes_to_display.append(c)
+    else:
+      for s in c['schedule']:
+        if selected_daypart in s['daypart']:
+          augmentClass(institution, session, c, students_dict)
+          classes_to_display.append(c)
+  classes_to_display.sort(key=alphaOrder)
+
+  return {
+    'user_type' : 'Teacher' if auth.email==auth.teacher_email else 'Admin',
+    'selected_date'   : selected_date,
+    'selected_daypart': selected_daypart,
+    'dayparts'  : current_app.json.dumps(dayparts),
+    'classes'   : current_app.json.dumps(classes_to_display),
+  }
+
+@classmethod
 def GetViewAttendance(cls, institution, session, auth):
   selected_daypart = get_param('selected_daypart','All')
 
@@ -552,8 +582,8 @@ def getFitnessErrorMsgs(schedule_by_dp):
     err_msgs.append("Too many PE's, maximum is two.")
   if num_fitness < 2:
     err_msgs.append("At least two PE or PE alternatives required.")
-  if num_fitness > 3:
-    err_msgs.append("Too many PE or PE alternatives, maximum is three.")
+  if num_fitness > 2:
+    err_msgs.append("Too many PE or PE alternatives, maximum is two.")
   if num_PE_MT > 1 or num_PE_TF > 1:
     err_msgs.append("Not allowed to have two PE's on Mon/Tues or Thurs/Fri.")
   return err_msgs
@@ -583,7 +613,7 @@ def GetErrorRegistration(cls, institution, session, auth):
         continue
       sched_obj = models.Schedule.FetchEntity(institution, session,
                                             s['email'].lower())
-      current_app.logger.info(f"sched_obj=%s" % sched_obj.get("class_ids"))
+      #current_app.logger.info(f"sched_obj=%s" % sched_obj.get("class_ids"))
       if not sched_obj or not sched_obj.get("class_ids"):
         err_list.append((['Missing schedule'], s, {}))
         continue # Entire schedule is missing,
@@ -662,7 +692,7 @@ def _getSchedule(institution, session, auth, html=False):
         classes_by_id[str(c['id'])] = c
         c['description'] = logic.GetHTMLDescription(institution, session, c)
   config = models.Config.Fetch(institution, session)
-  current_app.logger.info(f"student={auth.student_entity}")
+  #current_app.logger.info(f"student={auth.student_entity}")
   return {
     'student': auth.student_entity,
     'dayparts': dayparts,
@@ -767,6 +797,13 @@ Reports = {
     "template"    : "coming_soon.html",
     "student_access": True,
     "get_data"    : GetComingSoon,
+  },
+  "view_absence": {
+    "view"        : "Report",
+    "route"       : "/teacher/view_absence",
+    "template"    : "view_absence.html",
+    "teacher_access": True,
+    "get_data"    : GetViewAbsence,
   },
   "view_attendance": {
     "view"        : "Report",

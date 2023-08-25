@@ -58,6 +58,21 @@ body {
 }
 
 /***** admin viewable pages *****/
+
+#header-main {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  font-family: 'Oxygen', sans-serif;
+  /*background-color: #f1f1f1;*/
+  /*min-width: 900px;*/
+  min-height: 70px;
+}
+#main {
+  padding: 0px 12px;
+  display: flex;
+  background-color: #fff;
+}
 /* menu-main and menu-teacher (below) should match */
 #menu-main h3 {
   margin: 18px 0px 3px 0px;
@@ -175,10 +190,11 @@ textarea {
   display: flex;
   flex-direction: column;
   background-color: #F4F4F4;
-  padding: 10px 0px 10px 15px;
+  padding: 0.5rem!important;
   margin: 0px 0px 40px 0px;
-  width: 780px;
+  /*width: 780px;*/
 }
+/*
 #email-heading {
   display: flex;
   flex-direction: row;
@@ -188,26 +204,29 @@ textarea {
 }
 .email-list {
   min-width: 750px;
-  height: 100px;
+  height: min-content;
   resize: none;
 }
 .email-copybtn {
   height: 26px;
 }
+*/
 
 /***** teacher viewable pages *****/
+/*
 #main-teacher {
   padding: 0px 8px;
   display: flex;
   background-color: #fff;
-}
-
+}*/
 /* menu-teacher should match menu-main above */
+/*
 #menu-teacher {
   vertical-align: 'top';
   border-right: 1px solid black;
   padding: 5px;
 }
+*/
 #menu-teacher h3 {
   margin: 18px 0px 3px 0px;
 }
@@ -227,10 +246,10 @@ textarea {
 }
 
 #view-teacher {
-  padding: 8px 8px;
+  /*padding: 8px 8px;*/
   display: flex;
   flex-direction: column;
-  width: 80%;
+  /*width: 80%;*/
 }
 #view-registration {
   display: flex;
@@ -285,7 +304,7 @@ textarea {
 #attend-buttons {
   margin: 5px 0px 0px 0px;
 }
-#attend-edit {
+/*#attend-edit {
   width: 70px;
   height: 26px;
   margin: 0px 10px 0px 0px;
@@ -302,32 +321,40 @@ textarea {
 .attend-view-by > label {
   margin-right: 5px;
   margin-left: 15px;
-}
-#attend-view-class {
+}*/
+.attend-view-class {
   margin: 0px 0px 60px 0px;
   border: 1px solid #555;
   border-radius: 5px;
 }
-#attend-view-header {
+.attend-view-header {
   border-bottom: 1px solid #555;
   background-color: #d1dfe3;
   padding: 6px 0px 4px 7px;
   border-radius: 5px 5px 0px 0px;
   font-weight: bold;
 }
-#attend-view-class-table {
+.attend-view-header div {
+  word-wrap:break-word;
+}
+.attend-view-class-table {
   /*border-left: 1px solid #555;
   border-right: 1px solid #555;*/
   border-collapse: collapse;
 }
-#attend-view-class-table th, #attend-view-class-table td {
+.attend-view-class-table th, .attend-view-class-table td {
   padding: 2px 8px 0;
   border: 1px solid #ccc;
   border-collapse: collapse;
 }
-#attend-view-class-table tbody tr:nth-child(odd) {
-  background-color: #f1f1f1;;
+/*
+.attend-view-class-table tbody tr:nth-child(even) {
+  background-color: white !important;
 }
+.attend-view-class-table tbody tr:nth-child(odd) {
+  background-color: #f1f1f1 !important;
+}
+*/
 .attend-homeroom {
   font-size: 28px;
   width = 400px;
@@ -350,7 +377,7 @@ textarea {
   align-items: center;
   font-family: 'Oxygen', sans-serif;
   background-color: #f1f1f1;
-  min-width: 900px;
+  /*min-width: 900px;*/
   min-height: 70px;
 }
 #logo-user {
@@ -372,6 +399,9 @@ textarea {
   flex-direction: column;
   align-items: flex-end;
 }
+#logbtn {
+  border-width: 0px;
+}
 #email-user {
   font-size: 15px;
   margin: 0px 0px 5px 0px;
@@ -380,7 +410,7 @@ textarea {
   background-color: #f1f1f1;
   display: flex;
   justify-content: center;
-  min-width: 800px;
+  /*min-width: 800px;*/
   font-family: 'Oxygen', sans-serif;
 }
 #menu-user-spacer-left {
@@ -419,7 +449,7 @@ textarea {
   border-radius: 5px 5px 0px 0px;
 }
 #menu-user li {
-  padding: 8px 50px 16px 50px;
+  /*padding: 8px 50px 16px 50px;*/
   border-bottom: 2px solid #888888;
 }
 #menu-user li a:hover {
@@ -431,12 +461,14 @@ textarea {
   padding: 0px 16px;
   margin: auto;
 }
+/*
 #main-user {
   padding: 0px 12px;
   display: flex;
   background-color: #fff;
   justify-content: center;
 }
+*/
 .profile-user {
   display: flex;
   align-items: baseline;
@@ -595,4 +627,37 @@ table.attendanceLegend {
   font-size: 0.8em;
   border: 1px solid black;
   border-collapse: collapse;
+}
+
+/***** absence *****/
+.danger {
+  background-color: pink;
+}
+#absence-view-classes-table, #absence-view-absences-table {
+  border-collapse: collapse;
+  margin-top: 25px;
+}
+#absence-view-classes-table th, #absence-view-classes-table td, #absence-view-absences-table th, #absence-view-absences-table td {
+  padding: 2px 8px 0;
+  border: 1px solid #ccc;
+  border-collapse: collapse;
+}
+#absence-view-classes-table tbody tr:nth-child(odd), #absence-view-absences-table tbody tr:nth-child(odd) {
+  background-color: #f1f1f1;;
+}
+
+
+/****** bootstrap default style overrides *******/
+.bg-body-tertiary {
+  background-color: #f1f1f1 !important;
+}
+input[type="date"].form-control {
+  max-width: min-content;
+}
+div.dt-buttons {
+    float: left!important;
+    padding-bottom: 0.5rem!important;
+}
+.nav-tabs {
+    --bs-nav-tabs-border-width: 0;
 }
