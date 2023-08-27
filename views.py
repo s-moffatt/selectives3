@@ -73,7 +73,7 @@ def listOrder(c):
           c['dayorder'],
           c['instructor'] if 'instructor' in c else '')
 
-def buildRoster(c, roster, attendance, students):
+def buildRoster(c, roster, attendance, students, teachers):
   r = {}
   r['name'] = c['name']
   if 'instructor' in c:
@@ -86,6 +86,15 @@ def buildRoster(c, roster, attendance, students):
   student_list = [students[email] for email in roster['emails']]
   student_list.sort(key=(lambda s: s['last']))
   r['students'] = student_list
+  teacher_dict = {}
+  if 'owners' in c:
+    for email in c['owners']:
+      if email in teachers:
+        teacher_dict[email] = teachers[email]
+      else:
+        teacher_dict[email] = {'last':'','first':email,'email':email,'current_homeroom':'--'}
+  r['adults'] = teacher_dict
+
   if attendance:
     r['submitted_by'] = attendance['submitted_by']
     # for students not found (withdrawn from school), set last = '_None'
@@ -467,6 +476,13 @@ def TakeAttendanceGetJdata(cls, institution, session, auth):
     s['email'] = s['email'].lower()
     students_dict[s['email']] = s
 
+  teachers = models.Teachers.FetchJson(institution, session)
+  teachers_dict = {}
+  if not teachers: teachers = []
+  for s in teachers:
+    s['email'] = s['email'].lower()
+    teachers_dict[s['email']] = s
+
   my_roster = {}
   if selected_cid != 0 and selected_date:
     selected_attendance = models.Attendance.FetchJson(institution, session,
@@ -485,7 +501,8 @@ def TakeAttendanceGetJdata(cls, institution, session, auth):
 
     my_roster = buildRoster(selected_class, selected_roster,
                             attendance,
-                            students_dict)
+                            students_dict,
+                            teachers_dict)
   # my_classes and other_classes are lists of classes
   # my_roster is a dictionary:
   # {'name': 'Circuit Training',

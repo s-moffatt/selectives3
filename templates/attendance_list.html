@@ -184,7 +184,7 @@ window.onload = function() {
         {% endfor %}
 
         // Add instructors from Classes, if any
-        {% if c.get('instructor_attendance') != None %}
+        {% if c.get('owners') != None %}
 
           // insert a blank line of separation
           curr_student = {};
@@ -201,12 +201,20 @@ window.onload = function() {
           curr_student.grade = '';
           student_list.push(curr_student);
 
-          {% for p in c['instructor_attendance'] %}
+          {% for email,p in data.teachers.items() if email in c['owners'] %}
             curr_student = {};
             curr_student.first = '{{p.first}}';
             curr_student.last = '{{p.last}}';
-            curr_student.rm = '{{p.homeroom}}' || '--';
-            curr_student.grade = '{{p.grade}}' || '--';
+            curr_student.rm = '{{p.current_homeroom}}' || '--';
+            curr_student.grade = '--';
+            student_list.push(curr_student);
+          {% endfor %}
+          {% for p in c['owners'] if p not in data.teachers%}
+            curr_student = {};
+            curr_student.first = '{{p}}';
+            curr_student.last = '';
+            curr_student.rm = '--';
+            curr_student.grade = '--';
             student_list.push(curr_student);
           {% endfor %}
         {% endif %}

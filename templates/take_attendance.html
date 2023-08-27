@@ -136,10 +136,16 @@ function buildRosterTable() {
     numStudents += 1;
   });
 
-  if ('instructor_attendance' in js_selected_class) {
-    tbody.appendChild(document.createElement("hr"));
+  if (Object.keys(js_roster.adults).length) { 
+    let divider_row = document.createElement("tr");
+	  let divider_td  = document.createElement("td");
+	  divider_td.setAttribute("colspan","5");
+	  divider_td.innerHTML = "---- Instructor ----";
+	  divider_row.appendChild(divider_td);
+    tbody.appendChild(divider_row);
   
-    js_selected_class['instructor_attendance'].forEach(function(parent, i) {
+    Object.keys(js_roster.adults).forEach(function(email,i){
+      let parent = js_roster.adults[email];
       i += numStudents;
       let row = document.createElement("tr");
 
@@ -153,7 +159,7 @@ function buildRosterTable() {
       row.appendChild(gr_td);
 
       let hr_td = document.createElement("td");
-      hr_td.appendChild(document.createTextNode(parent['homeroom'] || '--'));
+      hr_td.appendChild(document.createTextNode(parent['current_homeroom'] || '--'));
       row.appendChild(hr_td);
 
       let present_td = document.createElement("td");
@@ -238,10 +244,9 @@ function setAttendance() {
   let numStudents = js_roster['students'].length;
   if ('present_adults' in js_roster) {
     js_roster['present_adults'].forEach(function(present_adult) {
-      present_adult = present_adult.split('_');
       let indx = -1;
-      if ('instructor_attendance' in js_selected_class) {
-        indx = js_selected_class['instructor_attendance'].findIndex(adult => adult['first'] === present_adult[0] && adult['last'] === present_adult[1]);
+      if (Object.keys(js_roster.adults).length) {
+        indx = Object.keys(js_roster.adults).findIndex(adult => adult === present_adult);
       }
       if (indx >= 0) {
         indx += numStudents;
@@ -253,10 +258,9 @@ function setAttendance() {
   
   if ('absent_adults' in js_roster) {
     js_roster['absent_adults'].forEach(function(absent_adult) {
-      absent_adult = absent_adult.split('_');
       let indx = -1;
-      if ('instructor_attendance' in js_selected_class) {
-        indx = js_selected_class['instructor_attendance'].findIndex(adult => adult['first'] === absent_adult[0] && adult['last'] === absent_adult[1]);
+      if (Object.keys(js_roster.adults).length) {
+        indx = Object.keys(js_roster.adults).findIndex(adult => adult === absent_adult);
       }
       if (indx >= 0) {
         indx += numStudents;
@@ -414,7 +418,7 @@ window.onload = function() {
     let present_adults = [];
     let absent_adults = [];
     let students = js_roster['students']
-    let adults = js_selected_class['instructor_attendance']
+    let adults = Object.keys(js_roster['adults'])
 
     for (let i=0; i<students.length; i++) {
       let rp_button = document.getElementById("present"+i);
@@ -430,11 +434,11 @@ window.onload = function() {
     for (let i=students.length; i<students.length+adults.length; i++) {
       let rp_button = document.getElementById("present"+i);
       if (rp_button.checked) {
-        present_adults.push(adults[i-students.length]['first'] + '_' + adults[i-students.length]['last'])
+        present_adults.push(adults[i-students.length])
       }
       let ra_button = document.getElementById("absent"+i);
       if (ra_button.checked) {
-        absent_adults.push(adults[i-students.length]['first'] + '_' + adults[i-students.length]['last']);
+        absent_adults.push(adults[i-students.length]);
       }
     }
     
@@ -457,7 +461,7 @@ window.onload = function() {
         document.getElementById("present" + i).checked = true;
         numStudents += 1;
       });
-      js_selected_class['instructor_attendance'].forEach(function(parent, i) {
+      Object.keys(js_roster.adults).forEach(function(parent, i) {
         i += numStudents;
         document.getElementById("present" + i).checked = true;
       });
@@ -471,7 +475,7 @@ window.onload = function() {
         document.getElementById("absent" + i).checked = true;
         numStudents += 1;
       });
-      js_selected_class['instructor_attendance'].forEach(function(parent, i) {
+      Object.keys(js_roster.adults).forEach(function(parent, i) {
         i += numStudents;
         document.getElementById("absent" + i).checked = true;
       });
