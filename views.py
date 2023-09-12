@@ -73,7 +73,7 @@ def listOrder(c):
           c['dayorder'],
           c['instructor'] if 'instructor' in c else '')
 
-def buildRoster(c, roster, attendance, students):
+def buildRoster(c, roster, attendance, students, teachers):
   r = {}
   r['name'] = c['name']
   if 'instructor' in c:
@@ -86,6 +86,15 @@ def buildRoster(c, roster, attendance, students):
   student_list = [students[email] for email in roster['emails']]
   student_list.sort(key=(lambda s: s['last']))
   r['students'] = student_list
+  teacher_dict = {}
+  if 'owners' in c:
+    for email in c['owners']:
+      if email in teachers:
+        teacher_dict[email] = teachers[email]
+      else:
+        teacher_dict[email] = {'last':'','first':email,'email':email,'current_homeroom':'--'}
+  r['adults'] = teacher_dict
+
   if attendance:
     r['submitted_by'] = attendance['submitted_by']
     # for students not found (withdrawn from school), set last = '_None'
@@ -97,6 +106,10 @@ def buildRoster(c, roster, attendance, students):
                    else {'email': email, 'last': '_None'}\
                    for email in attendance['absent']]
     r['absent'].sort(key=(lambda s: s['last']))
+    if 'present_adults' in attendance:
+      r['present_adults'] = [adult for adult in attendance['present_adults']]
+    if 'absent_adults' in attendance:
+      r['absent_adults'] = [adult for adult in attendance['absent_adults']]
     r['submitted_date'] = attendance['submitted_date']
     if 'note' in attendance:
       r['note'] = attendance['note']
@@ -404,17 +417,17 @@ def AutoRegisterGetJdata(cls, institution, session, auth):
 def TakeAttendancePostAction(cls, institution, session, auth):
   submitted_date = get_param("submitted_date")
   c_id           = get_param("c_id")
-  present_kids   = get_param("present_kids", None)
-  absent_kids    = get_param("absent_kids" , None)
-  note           = get_param("note"        , None)
-  if present_kids:
-    present_kids = [e for e in present_kids.split(',')]
-  else:
-    present_kids = []
-  if absent_kids:
-    absent_kids = [e for e in absent_kids.split(',')]
-  else:
-    absent_kids = []
+  present_kids   = get_param("present_kids", "")
+  absent_kids    = get_param("absent_kids" , "")
+  present_adults = get_param("present_adults", "")
+  absent_adults  = get_param("absent_adults" , "")
+  note           = get_param("note"        , "")
+
+  present_kids   = [e for e in present_kids.split(',') if e]
+  absent_kids    = [e for e in absent_kids.split(',') if e]
+  present_adults = [e for e in present_adults.split(',') if e]
+  absent_adults  = [e for e in absent_adults.split(',') if e]
+
   teachers = models.Teachers.FetchJson(institution, session)
   teacher = logic.FindUser(auth.email, teachers)
   if not teacher:
@@ -427,6 +440,8 @@ def TakeAttendancePostAction(cls, institution, session, auth):
   attendance[submitted_date] = {
     "present": present_kids,
     "absent": absent_kids,
+    "present_adults": present_adults,
+    "absent_adults": absent_adults,
     "submitted_by": " ".join([teacher['first'], teacher['last']]),
     "submitted_date": submitted_date,
     "note": note,
@@ -450,6 +465,7 @@ def TakeAttendanceGetJdata(cls, institution, session, auth):
   if not classes: classes = []
   my_classes = []
   other_classes = []
+  selected_class = []
   buildClasses(auth, dayparts, classes, my_classes, other_classes)
 
   students = models.Students.FetchJson(institution, session)
@@ -459,6 +475,13 @@ def TakeAttendanceGetJdata(cls, institution, session, auth):
   for s in students:
     s['email'] = s['email'].lower()
     students_dict[s['email']] = s
+
+  teachers = models.Teachers.FetchJson(institution, session)
+  teachers_dict = {}
+  if not teachers: teachers = []
+  for s in teachers:
+    s['email'] = s['email'].lower()
+    teachers_dict[s['email']] = s
 
   my_roster = {}
   if selected_cid != 0 and selected_date:
@@ -478,7 +501,8 @@ def TakeAttendanceGetJdata(cls, institution, session, auth):
 
     my_roster = buildRoster(selected_class, selected_roster,
                             attendance,
-                            students_dict)
+                            students_dict,
+                            teachers_dict)
   # my_classes and other_classes are lists of classes
   # my_roster is a dictionary:
   # {'name': 'Circuit Training',
@@ -494,6 +518,7 @@ def TakeAttendanceGetJdata(cls, institution, session, auth):
     'my_classes': my_classes,
     'my_roster': current_app.json.dumps(my_roster),
     'other_classes': other_classes,
+    'selected_class': current_app.json.dumps(selected_class)
   }
 
 @classmethod

@@ -13,7 +13,7 @@ function displayAttendance() {
   let class_div, class_header;
   let name, instructor, daypart, location, enrolled;
   let sname, sgrade, shomeroom, td;
-  let table, thead, tbody, row, header, none_div;
+  let table, thead, tbody, tfoot, row, header, none_div;
 
   {% for c in data.classes %}
     class_div = document.createElement("div");
@@ -64,7 +64,6 @@ function displayAttendance() {
       row.appendChild(header);
       {% for d in c['dates_sorted']|reverse  %}
         header = document.createElement("th");
-        //header.style.width = "50px";
         header.innerHTML = "{{d[1]}}";
         {% if c['attendance'][d[0]]['note'] %}
           header.innerHTML += "*";
@@ -81,11 +80,6 @@ function displayAttendance() {
         sname = document.createElement("td");
         sgrade = document.createElement("td");
         shomeroom = document.createElement("td");
-        /*
-        sname.style.width = "200px";
-        sgrade.style.width = "16px";
-        shomeroom.style.width = "20px";
-        */
         sname.innerHTML = "{{s['first']}} {{s['last']}}";
         sgrade.innerHTML = "{{s['current_grade']}}";
         shomeroom.innerHTML = "{{s['current_homeroom']}}";
@@ -93,25 +87,84 @@ function displayAttendance() {
  
         {% for d in c['dates_sorted']|reverse  %}
           td = document.createElement("td");
+          td.title = "{{c['attendance'][d[0]]['note']}}";
           {% if s['email'] in c['attendance'][d[0]]['absent'] %}
             td.innerHTML = "X";
             td.style.background = ABSENT_COLOR;
-            td.title = "{{c['attendance'][d[0]]['note']}}";
           {% elif s['email'] in c['attendance'][d[0]]['present'] %}
             td.innerHTML = "\u2713";
             td.style.background = PRESENT_COLOR;
-            td.title = "{{c['attendance'][d[0]]['note']}}";
           {% else %}
             td.innerHTML = " ";
-            td.title = "{{c['attendance'][d[0]]['note']}}";
           {% endif %}
           td.style.textAlign = "center";
           row.append(td);
         {% endfor %}
         tbody.appendChild(row);
       {% endfor %}
-
       table.appendChild(tbody);
+
+      // seperate instructors into table footer only is owners list non-empty
+      {% if c['owners']|length > 0 %} 
+        tfoot = document.createElement("tfoot");
+        row = document.createElement("tr");
+        row.className += "bg-body-tertiary";
+        sname = document.createElement("td");
+        sgrade = document.createElement("td");
+        shomeroom = document.createElement("td");
+        //sname.innerHTML = "<span class='d-none d-lg-inline'>---- Instructors ----</span>";
+        sname.innerHTML = "---- Instructor ----";
+        sname.setAttribute('colspan',3+{{c['dates_sorted']|length}});
+        row.append(sname);
+        /*
+        row.append(sname, sgrade, shomeroom);
+        {% for d in c['dates_sorted']|reverse  %}
+          td = document.createElement("td");
+          row.append(td);
+        {% endfor %} 
+        */     
+        tfoot.appendChild(row);
+
+        {% for email, adult in c['owners'].items() %}
+          row = document.createElement("tr");
+          sname = document.createElement("td");
+          sgrade = document.createElement("td");
+          shomeroom = document.createElement("td");
+          sname.innerHTML = "{{adult['first']}} {{adult['last']}}";
+          {% if 'grade' in adult %}
+            sgrade.innerHTML = "{{adult['grade']}}";
+          {% else %}
+            sgrade.innerHTML = "--";
+          {% endif %}
+
+          {% if 'current_homeroom' in adult %}
+            shomeroom.innerHTML = "{{adult['current_homeroom']}}";
+          {% else %}
+            shomeroom.innerHTML = "--";
+          {% endif %}
+          row.append(sname, sgrade, shomeroom);
+
+          {% for d in c['dates_sorted']|reverse %}
+            td = document.createElement("td");
+            td.title = "{{c['attendance'][d[0]]['note']}}";
+            {% if email in c['attendance'][d[0]]['absent_adults'] %}
+              td.innerHTML = "X";
+              td.style.background = ABSENT_COLOR;
+            {% elif email in c['attendance'][d[0]]['present_adults'] %}
+              td.innerHTML = "\u2713";
+              td.style.background = PRESENT_COLOR;
+            {% else %}
+              td.innerHTML = " ";
+            {% endif %}
+            td.style.textAlign = "center";
+            row.append(td);
+          {% endfor %}
+
+          tfoot.appendChild(row);
+        {% endfor %}
+        table.appendChild(tfoot);
+      {% endif %}
+
       class_div.appendChild(table);
       absences.appendChild(class_div);
     {% endif %}

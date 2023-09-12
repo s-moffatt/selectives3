@@ -71,7 +71,7 @@ def addStudentData(class_roster, students_by_email):
   for e in class_roster['emails']:
     class_roster['students'].append(students_by_email[e])
 
-def augmentClass(institution, session, c, students):
+def augmentClass(institution, session, c, students, teachers):
   c['daypart'] = "/".join([str(dp['daypart'])
                            for dp in c['schedule']])
   c['location'] = "/".join([str(dp['location'])
@@ -80,6 +80,14 @@ def augmentClass(institution, session, c, students):
   if not roster: roster = {}
   c['roster'] = [students[email] for email in roster['emails']]
   c['roster'].sort(key=lambda s: s['last'])
+  owners_dict = {}
+  if 'owners' in c:
+    for o in c['owners']:
+      if o in teachers:
+        owners_dict[o] = teachers[o]
+      else:
+        owners_dict[o] = {'first':o,'last':'','current_homeroom':'--','email':o}
+  c['owners'] = owners_dict
   attendance = models.Attendance.FetchJson(institution, session, str(c['id']))
   if attendance:
     # First date is for lookups, second truncated date is for displaying
@@ -140,11 +148,16 @@ def GetAttendanceList(cls, institution, session, auth):
     s['email'] = s['email'].lower()
   if students:
     students.sort(key=lambda s: s['last'])
+  teachers = models.Teachers.FetchJson(institution, session)
+  for s in teachers:
+    s['email'] = s['email'].lower()
+  teachers_dict = {v['email']:v for v in teachers}
   return {
       'user_type' : 'Teacher' if auth.email==auth.teacher_email else 'Admin',
       'classes': classes,
       'rosters': rosters,
       'students': students,
+      'teachers': teachers_dict,
   }
 
 @classmethod
@@ -362,17 +375,22 @@ def GetViewAbsence(cls, institution, session, auth):
     s['email'] = s['email'].lower()
     students_dict[s['email']] = s
 
+  teachers = models.Teachers.FetchJson(institution, session)
+  for s in teachers:
+    s['email'] = s['email'].lower()
+  teachers_dict = {v['email']:v for v in teachers}
+
   classes_to_display = []
   if not classes: classes = []
   for c in classes:
     #if 'Core' not in c['name']: #TODO: remove Core classes in a more general way
     if selected_daypart == 'All':
-      augmentClass(institution, session, c, students_dict)
+      augmentClass(institution, session, c, students_dict, teachers_dict)
       classes_to_display.append(c)
     else:
       for s in c['schedule']:
         if selected_daypart in s['daypart']:
-          augmentClass(institution, session, c, students_dict)
+          augmentClass(institution, session, c, students_dict, teachers_dict)
           classes_to_display.append(c)
   classes_to_display.sort(key=alphaOrder)
 
@@ -395,6 +413,10 @@ def GetViewAttendance(cls, institution, session, auth):
   for s in students:
     s['email'] = s['email'].lower()
     students_dict[s['email']] = s
+  teachers = models.Teachers.FetchJson(institution, session)
+  for s in teachers:
+    s['email'] = s['email'].lower()
+  teachers_dict = {v['email']:v for v in teachers}
 
   classes_to_display = []
   classes = models.Classes.FetchJson(institution, session)
@@ -402,12 +424,12 @@ def GetViewAttendance(cls, institution, session, auth):
   for c in classes:
     #if 'Core' not in c['name']: #TODO: remove Core classes in a more general way
     if selected_daypart == 'All':
-      augmentClass(institution, session, c, students_dict)
+      augmentClass(institution, session, c, students_dict, teachers_dict)
       classes_to_display.append(c)
     else:
       for s in c['schedule']:
         if selected_daypart in s['daypart']:
-          augmentClass(institution, session, c, students_dict)
+          augmentClass(institution, session, c, students_dict, teachers_dict)
           classes_to_display.append(c)
   classes_to_display.sort(key=alphaOrder)
 
