@@ -73,6 +73,12 @@ def listOrder(c):
           c['dayorder'],
           c['instructor'] if 'instructor' in c else '')
 
+def scheduleOrder(c):
+  return (c['name'] if "core" in c['name'].lower() else '_',
+          c['name'] if "PE" in c['name'] else '_',
+          c['name'] if 'fitness' in c and c['fitness'] else '_',
+		      c['name'])
+
 def buildRoster(c, roster, attendance, students, teachers):
   r = {}
   r['name'] = c['name']
@@ -779,7 +785,7 @@ def ScheduleGetJdata(cls, institution, session, auth):
       if daypart in classes_by_daypart:
         classes_by_daypart[daypart].append(c)
   for daypart in classes_by_daypart:
-    classes_by_daypart[daypart].sort(key=lambda c:c['name'])
+    classes_by_daypart[daypart].sort(key=scheduleOrder)
     
   schedule = models.Schedule.Fetch(institution, session, email)
   schedule = schedule.split(",")
