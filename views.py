@@ -75,7 +75,7 @@ def listOrder(c):
 
 def scheduleOrder(c):
   return (c['name'] if "core" in c['name'].lower() else '_',
-          c['name'] if "PE" in c['name'] else '_',
+          c['name'] if "PE"==c['name'] else '_',
           c['name'] if 'fitness' in c and c['fitness'] else '_',
 		      c['name'])
 
