@@ -205,10 +205,12 @@ class Authorizer(object):
              institution, session, self.student_entity, serving_rules)
     # When a student is listed under multiple serving rules,
     # return the start page with highest priority.
-    if "schedule" in page_types:
-      return "schedule"
     if "final" in page_types:
       return "postregistration"
+    if "schedule" in page_types:
+      return "schedule"
+    if "materials" in page_types:
+      return "preregistration"
     else:
       return "preregistration"
 
