@@ -30,6 +30,12 @@ def alphaOrder(c):
   return (c['name'],
           c['instructor'] if 'instructor' in c else '')
 
+def scheduleOrder(c):
+  return (c['name'] if "core" in c['name'].lower() else '_',
+          c['name'] if "PE"==c['name'] else '_',
+          c['name'] if 'fitness' in c and c['fitness'] else '_',
+          c['name'])
+
 def removeTaken(taken, students):
   return [s for s in students if s['email'] not in (taken or [])]
 
@@ -546,7 +552,7 @@ def GetCourses(cls, institution, session, auth):
       if daypart in classes_by_daypart:
         classes_by_daypart[daypart].append(c)
   for daypart in classes_by_daypart:
-    classes_by_daypart[daypart].sort(key=lambda c:c['name'])
+    classes_by_daypart[daypart].sort(key=scheduleOrder)
 
   config = models.Config.Fetch(institution, session)
 
