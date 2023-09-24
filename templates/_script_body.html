@@ -7,6 +7,9 @@
         }        
         $('input[type=date]').addClass('form-control');
         $('textarea').attr('style','').addClass('form-control');
+        $("textarea").on('change keyup paste', function() {
+          $(this).val($(this).val().replace(/(^"|"$)/,''));
+        });
         $('select').addClass('form-select');
         $('.copy-to-clipboard').click(function () {
           $(this).select();

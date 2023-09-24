@@ -14,6 +14,8 @@
   - daypart: Fri B
     location: Rm. 22
   instructor: Leftwich
+  excludegroups:
+  - Geometry_Group
   prerequisites:
   - group: Dance_Group
   - email: first.last@gmail.com
@@ -45,6 +47,7 @@ Optional fields:
   <li>instructor</li>
   <li>description</li>
   <li>donation</li>
+  <li>excludegroups - to exclude students in some student groups</li>
   <li>exclude_from_catalog - to exclude from the course catalog, set to true</li>
   <li>owners - used in teacher portal and for instructor attendance</li>
   <li>open_enrollment</li>
@@ -55,10 +58,59 @@ Optional fields:
 <form method=post>
 <input type=hidden name="institution" value="{{ institution }}" />
 <input type=hidden name="session" value="{{ session }}" />
+<div class="btn-group mb-3" role="group" aria-label="Open Close Enrollment Group">
+  <input type="radio" class="btn-check" name="btnradio" id="btnopen" autocomplete="off" onclick="openEnrollment()" checked>
+  <label class="btn btn-outline-secondary" for="btnopen">Open</label>
+
+  <input type="radio" class="btn-check" name="btnradio" id="btnclose" autocomplete="off" onclick="closeEnrollment()">
+  <label class="btn btn-outline-secondary" for="btnclose">Close</label>
+</div>
+
 <textarea name=data>
 {{ data }}
 </textarea>
 <br />
 <input type=submit />
 </form>
+<script>
+  function getEnrollmentAPI(){
+    var q = new URLSearchParams(window.location.search);
+    var qq = new URLSearchParams();
+    qq.append('institution', q.get('institution'));
+    qq.append('session', q.get('session'));
+    return("/enrollment?"+qq.toString());
+  }
+  function openEnrollment() {
+    $.post( getEnrollmentAPI(), ( classes ) => {
+      classes.forEach((c)=>{
+        console.log(c['id']+': '+c['name']+', max: '+c['max_enrollment']+', enrolled: '+c['emails'].length);
+        if(c['max_enrollment'] > c['emails'].length){
+          console.log('  => open_enrollment!');
+          $('textarea').val($('textarea').val()
+          .split('\n')
+          .map((x)=>x.replace(RegExp("id: "+c['id']+"$"),"id: "+c['id']+'\n  open_enrollment: 100'))
+          .join('\n'));
+        }
+      });
+    });
+    alert('YAML modified. Submit to save changes!');
+  }
+  function closeEnrollment() {
+    $('textarea').val($('textarea').val().replace(/\s+open_enrollment: \d+/g,''));
+    alert('YAML modified. Submit to save changes!');
+  }
+  function setEnrollmentBtn() {
+    if ($('textarea').val().match(/open_enrollment/)) { 
+      $('#btnopen').prop('checked',true) 
+    } else {
+      $('#btnclose').prop('checked',true) 
+    }
+  }
+  window.addEventListener("load", (event) => {
+    setEnrollmentBtn();
+  });
+  $("textarea").on('change keyup paste', function() {
+    setEnrollmentBtn();
+  });
+</script>
 {% endblock %}

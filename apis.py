@@ -48,6 +48,14 @@ def HoverTextGetJdata(cls, institution, session, auth):
     results[str(class_id)] = logic.GetHoverText(institution, session, use_full_description, classes_by_id[int(class_id)])
   return results
 
+@classmethod
+def EnrollmentGetJdata(cls, institution, session, auth):
+  classes = models.Classes.FetchJson(institution, session)
+  for c in classes:
+    rosters = models.ClassRoster.FetchEntity(institution, session,c['id'])
+    c['emails'] = rosters['emails']
+  return classes
+
 APIs = {
   "spots_available": {
     "view"           : "API",
@@ -72,6 +80,11 @@ APIs = {
     "student_access" : True,
     "student_page"   : "schedule",
     "get_jdata"      : HoverTextGetJdata,
+  },
+  "enrollment": {
+    "view"           : "API",
+    "route"          : "/enrollment",
+    "get_jdata"      : EnrollmentGetJdata,
   },
 }
 

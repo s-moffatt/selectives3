@@ -18,6 +18,8 @@ def Classes():
         "    - current_grade: OPTIONAL\n"
         "      email: OPTIONAL\n"
         "      group: OPTIONAL\n"
+        "  excludegroups:\n"
+        "    - OPTIONAL\n"
         "  schedule:\n"
         "    - daypart: REQUIRED\n"
         "      location: REQUIRED\n"
