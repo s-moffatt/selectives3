@@ -125,6 +125,14 @@ def StudentAllowedPageTypes(institution, session, student, serving_rules):
 
 def StudentIsEligibleForClass(institution, session, student, c):
   """returns True if student is eligible for class c."""
+  student_groups = models.GroupsStudents.FetchJson(institution, session)
+  if 'excludegroups' in c and student_groups:
+    for excludegroup in c['excludegroups']:
+      for group in student_groups:
+        if group['group_name'] == excludegroup:
+          for email in group['emails']:
+            if student['email'] == email:
+              return False
   if not c['prerequisites']:
     return True
   for prereq in c['prerequisites']:
@@ -143,7 +151,6 @@ def StudentIsEligibleForClass(institution, session, student, c):
       return True
     # this prerequisite uses a student group. Let's look up the group.
     eligible_group_name = prereq['group']
-    student_groups = models.GroupsStudents.FetchJson(institution, session)
     if not student_groups:
       # Error in setup: prerequisite uses a student group but no groups
       # exist yet. Admin should have run error check and caught

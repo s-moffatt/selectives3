@@ -49,6 +49,7 @@ function fillDate() {
 function fillClassesDropDown() {
   let class_dropdown = document.getElementById("classDropDown");
   let opt = document.createElement("option");
+  let c_id, dp_text;
   opt.disabled = "disabled";
   opt.selected = "selected";
   opt.hidden = "hidden";
@@ -57,9 +58,9 @@ function fillClassesDropDown() {
 
   {% for c in jdata.my_classes %}
     opt = document.createElement("option");
-    let c_id = parseInt({{ c['id'] }});
+    c_id = parseInt({{ c['id'] }});
     opt.value = c_id;
-    let dp_text = "{{c['daypart']}}";
+    dp_text = "{{c['daypart']}}";
     opt.text = "{{c['name']}} - {{c['instructor'] | safe}} - " +
                dp_text;
     class_dropdown.add(opt);
