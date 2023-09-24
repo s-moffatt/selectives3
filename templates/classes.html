@@ -73,8 +73,15 @@ Optional fields:
 <input type=submit />
 </form>
 <script>
+  function getEnrollmentAPI(){
+    var q = new URLSearchParams(window.location.search);
+    var qq = new URLSearchParams();
+    qq.append('institution', q.get('institution'));
+    qq.append('session', q.get('session'));
+    return("/enrollment?"+qq.toString());
+  }
   function openEnrollment() {
-    $.post( "enrollment?institution=DCS&session=2023-2024+Fall+%28Semester+1%29", ( classes ) => {
+    $.post( getEnrollmentAPI(), ( classes ) => {
       classes.forEach((c)=>{
         console.log(c['id']+': '+c['name']+', max: '+c['max_enrollment']+', enrolled: '+c['emails'].length);
         if(c['max_enrollment'] > c['emails'].length){
