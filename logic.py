@@ -57,6 +57,10 @@ def GetHoverText(institution, session, admin_view, c):
             class_desc += p[k]
     else:
       class_desc += 'All'
+    if 'excludegroups' in c:
+      class_desc += '\nExcludeGroup:'
+      for e in c['excludegroups']:
+        class_desc += '\n - ' + e
   r = models.ClassRoster.FetchEntity(institution, session, c['id'])
   if (r['emails']):
     class_desc += '\n\nCurrently Enrolled: ' + str(len(r['emails']))
