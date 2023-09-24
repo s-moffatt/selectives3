@@ -36,7 +36,7 @@ def SpotsFirmGetJdata(cls, institution, session, auth):
 
 @classmethod
 def HoverTextGetJdata(cls, institution, session, auth):
-  use_full_description = auth.CanAdministerInstitutionFromUrl()
+  use_full_description = auth.CanAdministerInstitutionFromUrl() or auth.HasTeacherAccess()
   class_ids = get_param("class_ids")
   class_ids = current_app.json.loads(class_ids)
   results = {}
