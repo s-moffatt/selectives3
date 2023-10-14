@@ -18,11 +18,82 @@
         $('.copy-to-clipboard').attr('data-bs-toggle','popover').attr('data-bs-content','Copied!').attr('data-bs-trigger','focus');
         $('[data-bs-toggle="popover"]').popover();
       }
+      function filljdatatable() {
+        if (typeof js_jdata != "undefined") {
+          // process nested object
+          js_jdata.forEach((e) => {
+            // classes
+            if ('prerequisites' in e && e.prerequisites.length) {
+              var a = e.prerequisites;
+              var s = '  - '+a.map((x)=>JSON.stringify(x).replace(/("|\{|\})/g,"")).join(String.fromCharCode(10)+"  - ");
+              e.prerequisites = s;
+            }
+            if ('schedule' in e && e.schedule.length) {
+                var a = e.schedule;
+                var s = '  - '+a.map((x)=>JSON.stringify(x).replace(/("|\{|\})/g,"").replace(/,/g,"\n    ")).join(String.fromCharCode(10)+"  - ");
+                e.schedule = s;
+            }
+            if ('owners' in e && e.owners.length) {
+                var a = e.owners;
+                var s = '  - '+a.join(String.fromCharCode(10)+"  - ");
+                e.owners = s;
+            }
+            // groups_students
+            if ('emails' in e && e.emails.length) {
+                var a = e.emails;
+                var s = '  - '+a.join(String.fromCharCode(10)+"  - ");
+                e.emails = s;
+            }
+          });
+          // get all possible columns from jdata
+          var jdata_columns = {};
+          js_jdata.forEach((e) => 
+            Object.keys(e).forEach((k) =>
+              jdata_columns[k]=1
+          ));
+          var jdata_columns_arr = Object.keys(jdata_columns);
+          // add column headers to dom
+          var thead="<tr>";
+          jdata_columns_arr.forEach((k) => {
+            thead += "<th>"+k+"</th>";
+          });
+          thead += "</tr>";
+          $("#jdata_thead").html(thead);
+          // add rows to dom
+          var tbody="";
+          js_jdata.forEach((e)=> {
+            tbody += "<tr>"
+            jdata_columns_arr.forEach((k) => {
+              tbody += "<td>"+((k in e) ? e[k]:'')+"</td>";
+            });
+            tbody += "</tr>";
+          });
+          $("#jdata_tbody").html(tbody);
+          // instantiate datatable
+          $('#jdata_table').DataTable({
+          //  data: js_jdata,
+          //  columns: Object.keys(jdata_columns).map((x) => ({data:x})),
+            responsive: true,info: false,
+            dom: 'Bfrtip',
+            buttons: [
+              'copy', 'csvHtml5',
+              {
+                extend: 'excel',
+                text: 'Excel',
+                exportOptions: {
+                  stripHtml: false
+                }
+              }
+            ]
+          });
+        }
+      }
       var who    = document.getElementById("who");
       var admin  = document.getElementById("admin");
       var logbtn = document.getElementById("logbtn");
       var msg    = document.getElementById("message");
       window.addEventListener("load", (event) => {
+        filljdatatable();
       	bootstrapfy();
       });
     </script>

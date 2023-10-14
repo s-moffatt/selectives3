@@ -96,6 +96,9 @@ textarea {
   width:60%;
   height:300px
 }
+#attend-text {
+  height:100px
+}
 .left-right-padding {
   padding-left:10px;
   padding-right:10px;
