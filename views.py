@@ -521,9 +521,9 @@ def TakeAttendanceGetJdata(cls, institution, session, auth):
     'current_cid': selected_cid,
     'current_date': selected_date,
     'session_query': session_query,
-    'my_classes': my_classes,
+    'my_classes': list(filter(lambda c: 'exclude_from_attendance' not in c or not c['exclude_from_attendance'], my_classes)),
     'my_roster': current_app.json.dumps(my_roster),
-    'other_classes': other_classes,
+    'other_classes': list(filter(lambda c: 'exclude_from_attendance' not in c or not c['exclude_from_attendance'], other_classes)),
     'selected_class': current_app.json.dumps(selected_class)
   }
 
@@ -1101,7 +1101,7 @@ class FormView(MethodView):
 
   @classmethod
   def GetJdata(cls, institution, session, auth):
-    return cls.model.FetchJson(institution, session)
+    return current_app.json.dumps(cls.model.FetchJson(institution, session))
 
   @classmethod
   def get(cls):

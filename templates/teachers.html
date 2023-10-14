@@ -1,6 +1,5 @@
 {% extends 'menu.html' %}
 {% block session_body %}
-
 <h3>Teachers</h3>
 <table width='60%'>
 <tr><td>
@@ -26,6 +25,7 @@ Optional field:
   <li>current_homeroom</li>
 </ul>
 </td></tr></table>
+{% include '_jdata_table_modal.html' %}
 <form method=post>
 <input type=hidden name="institution" value="{{ institution }}" />
 <input type=hidden name="session" value="{{ session }}" />

@@ -49,12 +49,14 @@ Optional fields:
   <li>donation</li>
   <li>excludegroups - to exclude students in some student groups</li>
   <li>exclude_from_catalog - to exclude from the course catalog, set to true</li>
+  <li>exclude_from_attendance - to exclude from the attendance pages, set to true</li>
   <li>owners - used in teacher portal and for instructor attendance</li>
   <li>open_enrollment</li>
   <li>fitness - if PE or PE substitute, set to true</li>
 </ul>
 </td></tr></table>
 
+{% include '_jdata_table_modal.html' %}
 <form method=post>
 <input type=hidden name="institution" value="{{ institution }}" />
 <input type=hidden name="session" value="{{ session }}" />

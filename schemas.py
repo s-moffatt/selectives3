@@ -26,6 +26,7 @@ def Classes():
         "  description: OPTIONAL\n"
         "  donation: OPTIONAL\n"
         "  exclude_from_catalog: OPTIONAL\n"
+        "  exclude_from_attendance: OPTIONAL\n"
         "  owners:\n"
         "    - OPTIONAL\n"
         "  open_enrollment: OPTIONAL\n"

@@ -405,7 +405,7 @@ def GetViewAbsence(cls, institution, session, auth):
     'selected_date'   : selected_date,
     'selected_daypart': selected_daypart,
     'dayparts'  : current_app.json.dumps(dayparts),
-    'classes'   : current_app.json.dumps(classes_to_display),
+    'classes'   : current_app.json.dumps(list(filter(lambda c: 'exclude_from_attendance' not in c or not c['exclude_from_attendance'], classes_to_display))),
   }
 
 @classmethod
@@ -443,7 +443,7 @@ def GetViewAttendance(cls, institution, session, auth):
     'user_type' : 'Teacher' if auth.email==auth.teacher_email else 'Admin',
     'dayparts' : dayparts,
     'selected_daypart': selected_daypart,
-    'classes': classes_to_display,
+    'classes': current_app.json.dumps(list(filter(lambda c: 'exclude_from_attendance' not in c or not c['exclude_from_attendance'], classes_to_display))),
   }
 
 
@@ -473,7 +473,7 @@ def getClassesByHomeroom(institution, session, classes, selected_daypart, studen
                                   for dp in c['schedule']])
       classes_to_display.append(newClass)
   classes_to_display.sort(key=alphaOrder)
-  return classes_to_display
+  return list(filter(lambda c: 'exclude_from_attendance' not in c or not c['exclude_from_attendance'], classes_to_display))
 
 @classmethod
 def GetViewByHomeroom(cls, institution, session, auth):
@@ -509,7 +509,7 @@ def GetViewByHomeroom(cls, institution, session, auth):
     'selected_daypart': selected_daypart,
     'selected_homeroom': selected_homeroom,
     'homeroom_nums': homeroom_nums,
-    'classes_by_homeroom': classes_by_homeroom,
+    'classes_by_homeroom': current_app.json.dumps(classes_by_homeroom),
   }
 
 @classmethod

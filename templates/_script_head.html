@@ -56,6 +56,7 @@
                 document.getElementById("logbtn").onclick = logout;
                 $('#logbtn').text("Sign out");
                 $('.fa-sign-in').removeClass('fa-sign-in').addClass('fa-sign-out');
+                filljdatatable();
                 bootstrapfy();
               }
             }
@@ -84,6 +85,7 @@
               } else {
                 document.getElementById("body-user").innerHTML="";
               }
+              filljdatatable();
               bootstrapfy();
             }
           }
